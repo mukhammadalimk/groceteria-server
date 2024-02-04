@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Jonas Schmedtmann",
+    "username": "jonasschmedtmann",
+    "email": "jonas@example.com",
+    "role": "user",
+    "active": true,
+    "photo": "user-1.jpg",
+    "password": "test1234",
+    "passwordConfirm": "test1234",
+    "addresses": [
+      {
+        "name": "Jonas Schmedtmann",
+        "phoneNumber": "01023435212",
+        "city": "Incheon",
+        "address1": "Inchron Michiholgu 24-34",
+        "address2": " 2nd floor 203 room",
+        "postalCode": "112345"
+      },
+      {
+        "name": "Jonas Haker",
+        "phoneNumber": "01023438212",
+        "city": "Seoul",
+        "address1": "Seoul Dirimdong 21-34",
+        "address2": "3nd floor 309 room",
+        "postalCode": "100345"
+      }
+    ]
+  },
+  {
+    "name": "Laura Wilson",
+    "username": "laurawilson",
+    "email": "laura@example.com",
+    "role": "user",
+    "active": true,
+    "photo": "user-2.jpg",
+    "password": "test1234",
+    "passwordConfirm": "test1234",
+    "addresses": [
+      {
+        "name": "Laura Wilson",
+        "phoneNumber": "01023192512",
+        "city": "Bucheon",
+        "address1": "Bucheon Kimhidong 24-34",
+        "address2": "4nd floor 403 room",
+        "postalCode": "198263"
+      }
+    ]
+  },
+  {
+    "name": "Admin",
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin",
+    "active": true,
+    "photo": "admin.jpg",
+    "password": "test1234",
+    "passwordConfirm": "test1234"
+  },
+  "laurawilson",
+  "tohirmalik",
+  "jonas",
+  "leogillespie",
+  "jennifer",
+  "katemorrison",
+  "eliana",
+  "miyah",
+  "benhadley",
+  "maxsmith",
+  "isabel",
+  "lisabrown"
+]

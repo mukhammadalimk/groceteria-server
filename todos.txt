@@ -1,0 +1,28 @@
+<--------------- BACKEND TODOS --------------->
+// TODOS
+- Write comments for every logic after you finish the app 
+- Install eslint 
+- Chatbox 
+- Start adding admin functionalities 
+- Think about how to make wishlist products being able to be added only once with index 
+- Checkout with stripe and paypal 
+- Think about tracking how many times a product is sold 
+
+// TODAY TODOS 
+- If a product is moved to another category, update numOfProducts property in both categories 
+- Allow users to write reviews on the products they bought 
+- Think about protectRoutes middleware
+
+// DONE
+- Remove virtual options fron productModel
+- Add totalPrice property for every item in allProducts array in orderModel and cartModel
+- Add compare property to user model
+- Add blog posts model for news and updates 
+- Create nested routes: POST | GET /products/:productId/reviews 
+- Create nested routes: GET /users/:userId/reviews 
+- Calculate ratingsAverage and ratingsQuantity 
+- Get top rated products api
+- Add wishlist and compare 
+- Update all products route  
+- IMPLEMENT CLOUDINARY FOR ALL THINGS 
+- Update cart controller 

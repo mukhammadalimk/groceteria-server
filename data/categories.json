@@ -1,0 +1,74 @@
+[
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658244497/categories/b1d6502105177320bfe7072a2b93e132_vkwd6m.png",
+      "cloudinaryId": "categories/b1d6502105177320bfe7072a2b93e132_vkwd6m"
+    },
+    "name": "Water And Drinks",
+    "numberOfProducts": 0,
+    "slug": "water-and-drinks"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658244715/categories/fa7e2befba3f630ede32aa4b91601077_f8t2hj.png",
+      "cloudinaryId": "categories/fa7e2befba3f630ede32aa4b91601077_f8t2hj"
+    },
+    "name": "Meat Products",
+    "numberOfProducts": 0,
+    "slug": "meat-products"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658245058/categories/3d6b05499f1a40c6847f604e036979e0_ilgrac.png",
+      "cloudinaryId": "categories/3d6b05499f1a40c6847f604e036979e0_ilgrac"
+    },
+    "name": "Oil",
+    "numberOfProducts": 0,
+    "slug": "oil"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658245510/categories/b01ad31cbeb6b70dab4688ce8aecd5ef_ndffk2.png",
+      "cloudinaryId": "categories/b01ad31cbeb6b70dab4688ce8aecd5ef_ndffk2"
+    },
+    "name": "Bread & Bakery",
+    "numberOfProducts": 0,
+    "slug": "bread-and-bakery"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658244954/categories/2da048b6c678efb6311e3118431e0111_ajyorx.png",
+      "cloudinaryId": "categories/2da048b6c678efb6311e3118431e0111_ajyorx"
+    },
+    "name": "Snacks",
+    "numberOfProducts": 0,
+    "slug": "snacks"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658245006/categories/c44f25f192643c4a12d867d1488b6e93_uvne6k.png",
+      "cloudinaryId": "categories/c44f25f192643c4a12d867d1488b6e93_uvne6k"
+    },
+    "name": "Fish Products",
+    "numberOfProducts": 0,
+    "slug": "fish-products"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658244629/categories/a92c958178ddbd4a67b7d7491c472674_kicod7.png",
+      "cloudinaryId": "categories/a92c958178ddbd4a67b7d7491c472674_kicod7"
+    },
+    "name": "Fresh Fruits",
+    "numberOfProducts": 0,
+    "slug": "fresh-fruits"
+  },
+  {
+    "image": {
+      "imageUrl": "https://res.cloudinary.com/groceteria/image/upload/v1658244658/categories/32327c6e1fb47851643860aa48d2c64f_oa8les.png",
+      "cloudinaryId": "categories/32327c6e1fb47851643860aa48d2c64f_oa8les"
+    },
+    "name": "Vegetables",
+    "numberOfProducts": 0,
+    "slug": "vegetables"
+  }
+]

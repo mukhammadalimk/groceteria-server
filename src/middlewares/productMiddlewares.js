@@ -4,8 +4,13 @@ const ErrorClass = require("../utils/errorClass");
 const cloudinary = require("../utils/cloudinary");
 const { updateProductOrNewsImages } = require("./commonMiddlewares");
 
+function clean(obj) {
+  for (var propName in obj) if (obj[propName] === "") delete obj[propName];
+  return obj;
+}
+
 const uploadProductImages = catchAsync(async (req, res, next) => {
-  // 1) Check the validity of the creating product properties.
+  // 1) Check if all required properties come from frontend.
   const { name, price, description, discountPercent, category, store } =
     req.body;
 
@@ -21,6 +26,7 @@ const uploadProductImages = catchAsync(async (req, res, next) => {
     return next(new ErrorClass("Please check properties of the product", 400));
   }
 
+  // 2. Check if discountPercent is not higher than 100
   if (discountPercent) {
     if (Number(discountPercent) > 100 || Number(discountPercent) < 0) {
       return next(
@@ -49,6 +55,8 @@ const uploadProductImages = catchAsync(async (req, res, next) => {
   }
 
   // 3) Put images into the req.body.images
+  const updatedBody = clean(req.body);
+  req.body = updatedBody;
   req.body.images = images;
 
   next();

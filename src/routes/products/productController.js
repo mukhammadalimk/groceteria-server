@@ -3,6 +3,7 @@ const APIFeatures = require("../../utils/APIFeatures");
 const ErrorClass = require("../../utils/errorClass");
 const catchAsync = require("../../utils/catchAsync");
 const cloudinary = require("../../utils/cloudinary");
+const Category = require("../../models/categoryModel");
 
 ////////////////////////////////////////////////////////////////////////
 const getAllProducts = catchAsync(async (req, res, next) => {
@@ -38,7 +39,6 @@ const getProduct = catchAsync(async (req, res, next) => {
     .populate("reviews")
     .populate({
       path: "category",
-      select: "name",
     });
 
   if (!product) {
@@ -52,7 +52,11 @@ const getProduct = catchAsync(async (req, res, next) => {
 });
 
 const deleteProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findByIdAndDelete(req.params.productId);
+  const product = await Product.findByIdAndDelete({
+    _id: req.params.productId,
+  });
+
+  console.log("product:", product);
 
   if (!product) {
     return next(new ErrorClass(`No product found with this id`, 404));
@@ -87,6 +91,32 @@ const createProduct = catchAsync(async (req, res, next) => {
 
 const updateProduct = catchAsync(async (req, res, next) => {
   // Updating images in the cloudinary is implemented through a middleware
+
+  // If the admin changes the category of the product.
+  if (req.body.category.startsWith("New")) {
+    req.body.category = req.body.category.split(" ")[1];
+    const updatingProduct = await Product.findById(req.params.productId);
+
+    const currentCategory = await Category.findById(updatingProduct.category);
+
+    // 1. First: we decrement the numberOfProducts of the category the updatingProduct is in now.
+    await Category.findByIdAndUpdate(
+      currentCategory._id,
+      { numberOfProducts: currentCategory.numberOfProducts - 1 },
+      { runValidators: true, new: true }
+    );
+    // 2. Second: we increment the numberOfProducts of the new category the product is being added to.
+    const newCategory = await Category.findById(req.body.category);
+    await Category.findByIdAndUpdate(
+      newCategory._id,
+      { numberOfProducts: newCategory.numberOfProducts + 1 },
+      { runValidators: true, new: true }
+    );
+  }
+
+  // inStock comes as string from frontend and we convert it to boolean here.
+  req.body.inStock = JSON.parse(req.body.inStock);
+
   const product = await Product.findByIdAndUpdate(
     req.params.productId,
     req.body,
@@ -94,7 +124,11 @@ const updateProduct = catchAsync(async (req, res, next) => {
       new: true,
       runValidators: true,
     }
-  );
+  )
+    .populate("reviews")
+    .populate({
+      path: "category",
+    });
 
   return res.status(200).json({
     status: "success",
@@ -126,7 +160,7 @@ const getTopProducts = catchAsync(async (req, res, next) => {
 // Get products that has discountedPrice
 const getSaleProducts = catchAsync(async (req, res, next) => {
   const discountedProducts = await Product.find({
-    discountedPrice: { $gt: 0 },
+    discountPercent: { $gt: 0 },
   });
 
   if (discountedProducts.length === 0) {

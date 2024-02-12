@@ -1,39 +1,5 @@
 [
   {
-    "name": "Chicken legs boneless",
-    "price": 11.9,
-    "weight": "2kg",
-    "brandName": "Seara",
-    "description": "Halal - Produced in Brazil. Best quality and delicious boneless chicken legs that can be cooked in any kind of meal. Frozen and vocuum packed",
-    "category": "62a4c9163d46fd1d2a641620",
-    "store": "Halal Meat & Diary",
-    "images": ["chicken-legs-boneless.jpeg"],
-    "inStock": true
-  },
-  {
-    "name": "Chicken legs",
-    "price": 9.98,
-    "weight": "2kg",
-    "brandName": "Seara",
-    "description": "Halal - Produced in Brazil under  Seara/Aurora brand. Best quality and delicious chicken legs that can be cooked in any kind of meal. Frozen and vocuum packed",
-    "discountPercent": 10,
-    "category": "62a4c9163d46fd1d2a641620",
-    "store": "Halal Meat & Diary",
-    "images": ["chicken-legs.jpeg"],
-    "inStock": true
-  },
-  {
-    "name": "Chicken breasts",
-    "price": 4.98,
-    "weight": "2kg",
-    "brandName": "Seara",
-    "description": "Halal - Produced in Brazil under  Seara/Aurora brand. Best quality and delicious chicken legs that can be cooked in any kind of meal. Frozen and vocuum packed",
-    "category": "62a4c9163d46fd1d2a641620",
-    "store": "Halal Meat & Diary",
-    "images": ["chicken-breasts.jpeg"],
-    "inStock": true
-  },
-  {
     "name": "Lamb liver",
     "price": 8.98,
     "weight": "1kg",
@@ -63,16 +29,7 @@
     "images": ["beef-chuck.jpeg", "beef-chuck-1.jpeg"],
     "inStock": true
   },
-  {
-    "name": "Minced beef",
-    "price": 8.98,
-    "weight": "1kg",
-    "description": "Halal - Produced in Australia. Sem porttitor purus magnis elit vivamus, cum metus praesent iaculis aenean. Maecenas egestas cursus orci.",
-    "category": "62a4c9163d46fd1d2a641620",
-    "store": "Halal Meat & Diary",
-    "images": ["minced-beef.jpeg", "minced-beef-1.jpeg"],
-    "inStock": false
-  },
+
   {
     "name": "Qazi",
     "price": 9.98,
@@ -187,28 +144,7 @@
     "images": ["dates-tunisia.jpeg", "dates-tunisia-1.jpeg"],
     "inStock": false
   },
-  {
-    "name": "Almond",
-    "price": 3.49,
-    "weight": "500g",
-    "brandName": "California",
-    "description": "Sem porttitor purus magnis elit vivamus, cum metus praesent iaculis aenean. Maecenas egestas cursus orci.",
-    "category": "62a4cc68efc9c7de10e48ef3",
-    "store": "Halal Foods",
-    "images": ["almond.jpeg", "almond-1.jpeg"],
-    "inStock": true
-  },
-  {
-    "name": "Sunflower oil",
-    "price": 10.4,
-    "weight": "600g",
-    "brandName": "ALTAY",
-    "description": "Sem porttitor purus magnis elit vivamus, cum metus praesent iaculis aenean. Maecenas egestas cursus orci.",
-    "category": "62a4cc96efc9c7de10e48ef6",
-    "store": "Halal Foods",
-    "images": ["sunflower-oil.jpeg"],
-    "inStock": true
-  },
+
   {
     "name": "Sunflower oil",
     "price": 9.49,

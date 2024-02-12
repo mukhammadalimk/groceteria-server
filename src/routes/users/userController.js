@@ -1,4 +1,3 @@
-const multer = require("multer");
 const User = require("../../models/userModel");
 const catchAsync = require("../../utils/catchAsync");
 const ErrorClass = require("../../utils/errorClass");
@@ -54,13 +53,16 @@ const makeUserAdmin = catchAsync(async (req, res, next) => {
 
 // These are for users
 const getUser = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
+  const user = await User.findById(req.params.id).select(
+    "+status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+  );
 
   if (!user) return next(new ErrorClass(`No user found with that id`, 404));
 
   res.status(200).json({
     status: "success",
-    data: user,
+    user,
+    token: req.token,
   });
 });
 
@@ -70,6 +72,12 @@ const getMe = (req, res, next) => {
 };
 
 const updateMe = catchAsync(async (req, res, next) => {
+  // This removes the falsy values from req.body but does not mutate the req.body
+  const filteredObject = Object.entries(req.body).reduce(
+    (a, [k, v]) => (v ? ((a[k] = v), a) : a),
+    {}
+  );
+
   // 1) Send error if user tries to update password in this route
   if (req.body.password || req.body.passwordConfirm) {
     return next(
@@ -87,19 +95,41 @@ const updateMe = catchAsync(async (req, res, next) => {
     "email",
     "username",
     "addresses",
-    "cardInfo"
+    "cardInfo",
+    "phoneNumber"
   );
-  if (req.file) filteredBody.photo = req.file.filename;
+  if (req.file) {
+    filteredBody.photo = req.file.filename;
+    filteredObject.photo = req.file.filename;
+  }
 
-  // 3) Update user data
-  const user = await User.findByIdAndUpdate(req.user.id, filteredBody, {
-    new: true,
-    runValidators: true,
-  });
+  // 3) Update user data based on if phoneNumber is empty or has value
+  let user;
+  if (req.body.phoneNumber === "") {
+    await User.updateOne(
+      { _id: req.user.id },
+      {
+        $unset: { phoneNumber: "" },
+      }
+    );
+    user = await User.findByIdAndUpdate(req.user.id, filteredObject, {
+      new: true,
+      runValidators: true,
+    }).select(
+      "+status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+    );
+  } else {
+    user = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+      new: true,
+      runValidators: true,
+    }).select(
+      "+status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+    );
+  }
 
-  res.status(200).json({
+  return res.status(200).json({
     status: "success",
-    data: user,
+    user: user,
   });
 });
 

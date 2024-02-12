@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "A user must have a name!"],
       trim: true,
+      minlength: 5,
+      maxlength: 20,
+      trim: true,
     },
     username: {
       type: String,
@@ -30,7 +33,8 @@ const userSchema = new mongoose.Schema(
     },
     photo: {
       type: String,
-      default: "default.jpg",
+      default:
+        "https://res.cloudinary.com/groceteria/image/upload/v1658398936/news/ffwlijrlur4gz7x5mz3m.jpg",
     },
     role: {
       type: String,
@@ -80,7 +84,7 @@ const userSchema = new mongoose.Schema(
       default: "pending",
       select: false,
     },
-    phoneNumber: { type: Number, max: 15 },
+    phoneNumber: { type: String },
     verificationCode: Number,
     verificationCodeExpires: Date,
     wishlisted: [

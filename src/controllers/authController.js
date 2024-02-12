@@ -31,7 +31,7 @@ const createSendToken = (user, statusCode, res) => {
   return res.status(statusCode).json({
     status: "success",
     token,
-    data: user,
+    user,
   });
 };
 
@@ -83,7 +83,8 @@ const signup = catchAsync(async (req, res, next) => {
 
     return res.status(201).json({
       status: "success",
-      message: `You are registered successfully. Vefification code was sent to ${newUser.email}. Enter the code to get access`,
+      message: `You are successfully registered. Vefification code was sent to ${newUser.email}. Please enter the code to get access`,
+      username: newUser.username,
     });
   } catch (error) {
     await sendingEmailError(newUser);
@@ -98,25 +99,30 @@ const login = catchAsync(async (req, res, next) => {
 
   let user;
   // 2. Check if user exists and password is correct
-  if (email) user = await User.findOne({ email }).select("+password +status");
+  if (email)
+    user = await User.findOne({ email }).select(
+      "+password +status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt"
+    );
   if (username)
-    user = await User.findOne({ username }).select("+password +status");
+    user = await User.findOne({ username }).select(
+      "+password +status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt"
+    );
 
   if (!user || !(await user.checkCandidatePassword(password, user.password))) {
     return next(
-      new ErrorClass(`Password or email (username) are not correct`, 401)
+      new ErrorClass(`Password or email (username) is not correct`, 401)
     );
   }
 
-  // If user is in pending mode, Send verification code to user's email to make them active
-  if (user.status === "pending") {
+  // If user is in pending mode and the verificationcode expires, Send verification code to user's email to make them active
+  if (user.status === "pending" && user.verificationCodeExpires < Date.now()) {
     try {
       const randomNumber = Math.floor(100000 + Math.random() * 900000);
       user.verificationCode = randomNumber;
       user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
       await user.save({ validateBeforeSave: false });
 
-      const message = `You account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
+      const message = `Your account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
       await sendEmail({
         email: user.email,
         subject: `Verification Code (valid only for 10 minutues!)`,
@@ -125,11 +131,21 @@ const login = catchAsync(async (req, res, next) => {
 
       return res.status(401).json({
         status: "failure",
-        message: `You account is in pending mode. Verification code was sent to yout email (${user.email}). Please enter the code to get access`,
+        message: `Your account is in pending mode. Verification code was sent to yout email (${user.email}). Please enter the code to get access`,
+        username: user.username,
       });
     } catch (error) {
       await sendingEmailError(user);
     }
+  }
+
+  // If user is in pending mode but verification code's not expired yet, we just inform the user about the verification code
+  if (user.status === "pending" && user.verificationCodeExpires > Date.now()) {
+    return res.status(401).json({
+      status: "failure",
+      message: `Your account is in pending mode. Please enter the code sent "${user.email}" to get access.`,
+      username: user.username,
+    });
   }
 
   // 3. If everything is okay, send token and log user in
@@ -137,12 +153,12 @@ const login = catchAsync(async (req, res, next) => {
 });
 
 const sendVerificationCodeAgain = catchAsync(async (req, res, next) => {
-  const { email } = req.body;
+  const { username } = req.body;
 
   // 1. Check if user with entered email exists
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ username });
   if (!user) {
-    return next(new ErrorClass(`User with entered email not found`, 401));
+    return next(new ErrorClass(`User with entered username not found`, 401));
   }
 
   // 2. Send verification code
@@ -152,7 +168,7 @@ const sendVerificationCodeAgain = catchAsync(async (req, res, next) => {
     user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
     await user.save({ validateBeforeSave: false });
 
-    const message = `You account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
+    const message = `Your account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
     await sendEmail({
       email: user.email,
       subject: `Verification Code (valid only for 10 minutues!)`,
@@ -161,7 +177,7 @@ const sendVerificationCodeAgain = catchAsync(async (req, res, next) => {
 
     return res.status(200).json({
       status: "success",
-      message: `You account is in pending mode. Verification code was sent to yout email (${user.email}). Please enter the code to get access`,
+      message: `Verification code was sent to yout email (${user.email}). Please enter the code to get access`,
     });
   } catch (error) {
     await sendingEmailError(user);
@@ -171,7 +187,9 @@ const sendVerificationCodeAgain = catchAsync(async (req, res, next) => {
 const verify = catchAsync(async (req, res, next) => {
   // 1. Get user based on verification code
   const { verificationCode } = req.body;
-  let user = await User.findOne({ verificationCode });
+  let user = await User.findOne({ verificationCode }).select(
+    "-wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt"
+  );
 
   // 2. If verification code expired or verification code is invalid, send error
   if (!user) return next(new ErrorClass(`Verification code is invalid`, 400));
@@ -243,6 +261,8 @@ const protectRoutes = catchAsync(async (req, res, next) => {
 
   // Allow access
   req.user = loggingUser;
+  req.token = token;
+
   next();
 });
 
@@ -258,7 +278,7 @@ const restrictTo = (...roles) => {
 };
 
 const forgotPassword = catchAsync(async (req, res, next) => {
-  const { email } = req.body;
+  const { email, searchLink } = req.body; // searchLink is what page a user is redirected after successfully resetting password.
   if (!email) return next(new ErrorClass("Please provide your email!", 404));
 
   // 1) Get user based on email on req.body
@@ -270,12 +290,13 @@ const forgotPassword = catchAsync(async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   // 3) Send it to user's email
-  const resetUrl = `${req.protocol}://${req.get(
-    "host"
-  )}/api/v1/reset-password/${resetToken}`;
+
+  const resetUrl = `${req.get("origin")}/auth/reset-password/${resetToken}${
+    searchLink ? searchLink : ""
+  }`;
 
   const message = `Forgot your password? Please click the link below to reset your password: ${resetUrl}
-  \n If you did not forget your password, just ignore this email!`;
+  \n If you did not forget your password, just ignore this email.`;
 
   try {
     await sendEmail({
@@ -294,7 +315,10 @@ const forgotPassword = catchAsync(async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
 
     return next(
-      new ErrorClass(`Error occured with send email! Please try again later.`)
+      new ErrorClass(
+        `Error occured with send email! Please try again later.`,
+        404
+      )
     );
   }
 });
@@ -309,10 +333,21 @@ const resetPassword = catchAsync(async (req, res, next) => {
   const user = await User.findOne({
     resetToken: hashedToken,
     resetTokenExpires: { $gt: Date.now() },
-  });
+  }).select("+password");
 
   if (!user)
     return next(new ErrorClass(`Token is invalid or has expired`, 400));
+
+  // If the new password is the same as the old one, send an error
+
+  if (await user.checkCandidatePassword(req.body.password, user.password)) {
+    return next(
+      new ErrorClass(
+        `The current password is the same with the new password. Please choose a different password.`,
+        403
+      )
+    );
+  }
 
   // 2) If token has not expired and there is user, set the new password
   user.password = req.body.password;
@@ -348,6 +383,27 @@ const updateMyPassword = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+const checkResetTokenExist = catchAsync(async (req, res, next) => {
+  // 1) Get user based on the token
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(req.params.token)
+    .digest("hex");
+
+  // 2) Check if the user with this token exists in database
+  const user = await User.findOne({ resetToken: hashedToken });
+
+  if (!user) return next(new ErrorClass(`Invalid token`, 404));
+
+  // If token expires
+  if (user.resetTokenExpires < Date.now()) {
+    return next(new ErrorClass(`Expired token`, 400));
+  }
+
+  // If everthing is okay, we just send ok response
+  return res.status(200).json({ status: "success" });
+});
+
 module.exports = {
   signup,
   login,
@@ -359,4 +415,5 @@ module.exports = {
   forgotPassword,
   updateMyPassword,
   sendVerificationCodeAgain,
+  checkResetTokenExist,
 };

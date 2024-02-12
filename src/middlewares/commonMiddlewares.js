@@ -37,7 +37,7 @@ const removeOrAndUploadImages = async (Modal, next, folder, req, type) => {
     req.body.images = req.body.notDeletedImages;
 
     // Upload new images to the cloudinary
-    if (type === false || type === "onlyAdd") {
+    if (type === "newAndRemove" || type === "onlyAdd") {
       await Promise.all(
         req.files.map(async (file) => {
           const result = await cloudinary.uploader.upload(file.path, {
@@ -53,7 +53,7 @@ const removeOrAndUploadImages = async (Modal, next, folder, req, type) => {
 
       // Concact all images and put it in req.body.images which updateProduct or updateNews will have access
       req.body.images =
-        type === false
+        type === "newAndRemove"
           ? notDeletedImages.concat(images)
           : updatingItem.images.concat(images);
     }
@@ -65,25 +65,29 @@ const removeOrAndUploadImages = async (Modal, next, folder, req, type) => {
 const updateProductOrNewsImages = (Modal, folder, id) =>
   catchAsync(async (req, res, next) => {
     // If Admin does not update images, this middleware will not be needed.
-    if (!req.files && req.body.notDeletedImages === undefined) {
+    if (req.files.length === 0 && req.body.notDeletedImages === undefined) {
       return next();
     }
+    // req.body.notDeletedImages comes as string from frontend and we parse it here
+    req.body.notDeletedImages = req.body.notDeletedImages
+      ? JSON.parse(req.body.notDeletedImages)
+      : undefined;
 
     req.params.id = id === "newsId" ? req.params.newsId : req.params.productId;
 
     // We have three conditions here
     // 1 - Admin only Removes image(s)
-    if (!req.files && req.body.notDeletedImages) {
-      await removeOrAndUploadImages(Modal, next, folder, req, true);
+    if (req.files.length === 0 && req.body.notDeletedImages?.length > 0) {
+      await removeOrAndUploadImages(Modal, next, folder, req, "onlyRemove");
     }
 
     // 2 - Admin both Adds new image(s) and Removes image(s)
-    if (req.files && req.body.notDeletedImages) {
-      await removeOrAndUploadImages(Modal, next, folder, req, false);
+    if (req.files.length > 0 && req.body.notDeletedImages?.length >= 0) {
+      await removeOrAndUploadImages(Modal, next, folder, req, "newAndRemove");
     }
 
     // 3 - Admin only adds new image(s)
-    if (req.files && !req.body.notDeletedImages) {
+    if (req.files.length > 0 && req.body.notDeletedImages === undefined) {
       await removeOrAndUploadImages(Modal, next, folder, req, "onlyAdd");
     }
 

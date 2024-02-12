@@ -86,7 +86,7 @@ module.exports = {
       required: [true, "Please provide receiver's name"],
       trim: true,
     },
-    phoneNumber: { type: Number, required: true },
+    phoneNumber: { type: String, required: true },
     city: {
       type: String,
       required: [true, "Please provide receiver's city"],

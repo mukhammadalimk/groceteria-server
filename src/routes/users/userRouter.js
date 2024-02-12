@@ -10,6 +10,7 @@ const {
   logout,
   verify,
   sendVerificationCodeAgain,
+  checkResetTokenExist,
 } = require("../../controllers/authController");
 const { multerUserPhoto } = require("../../middlewares/commonMiddlewares");
 const { uploadUserPhoto } = require("../../middlewares/userMiddlewares");
@@ -30,7 +31,7 @@ const {
   addToCompare,
   addToWishlist,
   removeFromWishlist,
-  removeFromCompare, 
+  removeFromCompare,
 } = require("./userController");
 
 const userRouter = express.Router();
@@ -47,6 +48,7 @@ userRouter.post("/send-code-again", sendVerificationCodeAgain);
 
 userRouter.post("/forgotPassword", forgotPassword);
 userRouter.patch("/resetPassword/:token", resetPassword);
+userRouter.get("/checkResetToken/:token", checkResetTokenExist);
 userRouter.patch("/updateMyPassword", protectRoutes, updateMyPassword);
 userRouter.patch(
   "/updateMe",

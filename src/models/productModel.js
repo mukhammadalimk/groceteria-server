@@ -12,7 +12,7 @@ const productSchema = new mongoose.Schema(
     weight: helperModal.weightObj,
     brandName: helperModal.brandNameObj,
     description: helperModal.descriptionObj,
-    discountPercent: helperModal.discountPercentObj,
+    discountedPrice: { type: Number, min: 0, default: 0 },
     category: {
       type: mongoose.Schema.ObjectId,
       ref: "Category",

@@ -56,8 +56,6 @@ const deleteProduct = catchAsync(async (req, res, next) => {
     _id: req.params.productId,
   });
 
-  console.log("product:", product);
-
   if (!product) {
     return next(new ErrorClass(`No product found with this id`, 404));
   }
@@ -157,7 +155,7 @@ const getTopProducts = catchAsync(async (req, res, next) => {
   });
 });
 
-// Get products that has discountedPrice
+//TODO: Get products that has discountedPrice
 const getSaleProducts = catchAsync(async (req, res, next) => {
   const discountedProducts = await Product.find({
     discountPercent: { $gt: 0 },

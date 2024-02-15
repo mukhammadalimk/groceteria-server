@@ -5,36 +5,63 @@ const cloudinary = require("../utils/cloudinary");
 const { updateProductOrNewsImages } = require("./commonMiddlewares");
 
 function clean(obj) {
-  for (var propName in obj) if (obj[propName] === "") delete obj[propName];
+  for (const propName in obj) if (obj[propName] === "") delete obj[propName];
   return obj;
 }
 
-const uploadProductImages = catchAsync(async (req, res, next) => {
+const validateProductProperties = catchAsync(async (req, res, next) => {
   // 1) Check if all required properties come from frontend.
-  const { name, price, description, discountPercent, category, store } =
+  const { name, price, description, discountedPrice, category, store } =
     req.body;
 
-  if (
-    !name ||
-    !price ||
-    Number(price) <= 0 ||
-    !description ||
-    !category ||
-    !store ||
-    !req.files
-  ) {
+  req.body = clean(req.body);
+
+  let validatedOnPost = false;
+  if (req.method === "POST") {
+    validatedOnPost =
+      !name ||
+      !price ||
+      Number(price) <= 0 ||
+      !description ||
+      !category ||
+      !store ||
+      !req.files;
+  }
+
+  let validatedOnPatch = false;
+  if (req.method === "PATCH") {
+    validatedOnPatch =
+      !name ||
+      !price ||
+      Number(price) <= 0 ||
+      !description ||
+      !category ||
+      !store;
+  }
+
+  if (validatedOnPost || validatedOnPatch) {
     return next(new ErrorClass("Please check properties of the product", 400));
   }
 
-  // 2. Check if discountPercent is not higher than 100
-  if (discountPercent) {
-    if (Number(discountPercent) > 100 || Number(discountPercent) < 0) {
+  // 2. Check if discountPrice is not higher than the actual price
+  if (discountedPrice) {
+    if (
+      Number(discountedPrice) > Number(price) ||
+      Number(discountedPrice) < 0
+    ) {
       return next(
-        new ErrorClass("Please check properties of the product", 400)
+        new ErrorClass(
+          "Sale price should be lower than the actual price or higher than 0.",
+          400
+        )
       );
     }
   }
 
+  next();
+});
+
+const uploadProductImages = catchAsync(async (req, res, next) => {
   // 2) Upload images to cloudinary
   const images = [];
   try {
@@ -69,6 +96,7 @@ const updateProductImages = updateProductOrNewsImages(
 );
 
 module.exports = {
+  validateProductProperties,
   updateProductImages,
   uploadProductImages,
 };

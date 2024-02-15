@@ -1,4 +1,5 @@
 const Cart = require("../../models/cartModel");
+const Product = require("../../models/productModel");
 const catchAsync = require("../../utils/catchAsync");
 const ErrorClass = require("../../utils/errorClass");
 
@@ -9,27 +10,45 @@ const getMyCart = catchAsync(async (req, res, next) => {
   return res.status(200).json({
     status: "success",
     results: userCart ? userCart.cartProducts.length : 0,
-    data: userCart || {},
+    data: userCart || null,
   });
 });
 
-// This api is used in cartDetail, productDetails and home pages in frontend. (quantity might be above 1)
+/// Update cart api
 const addToCart = catchAsync(async (req, res, next) => {
-  // Return an error if quantity is negative or zero
+  // Return an error if quantity is negative
   if (req.body.quantity <= 0)
-    return next(new ErrorClass("Quantity must be a positive number", 400));
+    return next(new ErrorClass("Quantity must be above 0.", 400));
 
-  // 1. Find user cart
+  // 1. Find user cart and adding or updating product
   const existingCart = await Cart.findOne({ user: req.user._id });
+  const addingProduct = await Product.findById(req.body.productId);
+
+  // Return an error if the product is not found
+  if (!addingProduct)
+    return next(new ErrorClass("No product found with that id", 404));
 
   // Create a cart if user does not have one
   if (!existingCart) {
-    const cartProduct = req.body;
-    let updatedProduct = cartProduct;
-    updatedProduct.subTotal = cartProduct.quantity * cartProduct.price;
+    const addingProductCopy = JSON.parse(JSON.stringify(addingProduct));
+
+    addingProductCopy.price = addingProduct.discountedPrice
+      ? addingProduct.discountedPrice
+      : addingProduct.price;
+
+    const cartProduct = {
+      name: addingProductCopy.name,
+      image: addingProductCopy.images[0].imageUrl,
+      price: Number(addingProductCopy.price.toFixed(2)),
+      quantity: req.body.quantity,
+      subTotal: Number(
+        (req.body.quantity * addingProductCopy.price).toFixed(2)
+      ),
+      productId: req.body.productId,
+    };
 
     const userCart = await Cart.create({
-      cartProducts: [updatedProduct],
+      cartProducts: [cartProduct],
       user: req.user._id,
       totalPrice: cartProduct.subTotal,
       totalQuantity: cartProduct.quantity,
@@ -41,55 +60,66 @@ const addToCart = catchAsync(async (req, res, next) => {
     });
   }
 
-  const existingProductIndex = existingCart.cartProducts.findIndex(
+  // If the user already has a cart
+  const existingCartProductIndex = existingCart.cartProducts.findIndex(
     (product) => product.productId == req.body.productId
   );
-  const existingProduct = existingCart.cartProducts[existingProductIndex];
+  const existingCartProduct =
+    existingCart.cartProducts[existingCartProductIndex];
 
   let updatedCart;
   let updatedCartProducts;
 
-  // 2. Product is already added, find the product and update the quantity, subTotal and totalPrice
-  if (existingProduct) {
+  // Product is already added, find the product and update the quantity, subTotal and totalPrice
+  if (existingCartProduct) {
     // Update product quantity and subTotal
-    let updatedProduct = existingProduct;
-    updatedProduct.quantity = existingProduct.quantity + req.body.quantity;
-    updatedProduct.subTotal += req.body.quantity * existingProduct.price;
+    let updatedProduct = JSON.parse(JSON.stringify(existingCartProduct));
+
+    updatedProduct.quantity += req.body.quantity;
+    const price = addingProduct.discountedPrice || addingProduct.price;
+    const subtotal = Number((updatedProduct.quantity * price).toFixed(2));
+    updatedProduct.price = Number(price.toFixed(2));
+    updatedProduct.subTotal = subtotal;
 
     // Update cartProducts and cart totalPrice
     updatedCart = existingCart;
     updatedCartProducts = existingCart.cartProducts;
-    updatedCartProducts[existingProductIndex] = updatedProduct;
+    updatedCartProducts[existingCartProductIndex] = updatedProduct;
     updatedCart.cartProducts = updatedCartProducts;
-    updatedCart.totalPrice += req.body.quantity * updatedProduct.price;
     updatedCart.totalQuantity += req.body.quantity;
+    updatedCart.totalPrice = updatedCart.cartProducts.reduce(
+      (sum, item) => sum + item.subTotal,
+      0
+    );
   }
 
   // 3. Cart was created but product is new, add to cart and update totalPrice
-  if (!existingProduct) {
-    const newProduct = req.body;
+  if (!existingCartProduct) {
+    const price = addingProduct.discountedPrice || addingProduct.price;
+    const subtotal = Number((req.body.quantity * price).toFixed(2));
+
     updatedCart = existingCart;
     updatedCartProducts = existingCart.cartProducts;
     updatedCartProducts.push({
-      name: newProduct.name,
-      price: newProduct.price,
-      image: newProduct.image,
-      quantity: newProduct.quantity,
-      subTotal: newProduct.quantity * newProduct.price,
-      productId: newProduct.productId,
+      name: addingProduct.name,
+      price: Number(price.toFixed(2)),
+      image: addingProduct.images[0].imageUrl,
+      quantity: req.body.quantity,
+      subTotal: subtotal,
+      productId: addingProduct._id,
     });
     updatedCart.cartProducts = updatedCartProducts;
-    updatedCart.totalPrice += newProduct.quantity * newProduct.price;
-    updatedCart.totalQuantity += newProduct.quantity;
+    updatedCart.totalPrice = updatedCart.cartProducts.reduce(
+      (sum, item) => sum + item.subTotal,
+      0
+    );
+    updatedCart.totalQuantity += req.body.quantity;
   }
 
   const userCart = await Cart.findOneAndUpdate(
     { user: req.user._id },
     updatedCart,
-    {
-      new: true,
-      runValidators: true,
-    }
+    { new: true, runValidators: true }
   );
 
   if (!userCart) return next(new ErrorClass("No cart found with that id", 404));
@@ -102,12 +132,11 @@ const addToCart = catchAsync(async (req, res, next) => {
 
 // This api is used in shopping cart page in frontend
 const updateCart = catchAsync(async (req, res, next) => {
-  // Return an error if quantity is negative or zero
-  if (req.body.quantity === 0)
-    return next(new ErrorClass("Quantity must be either 1 or -1", 400));
-  // Increment if quantity is 1
-  // Decrement if quantity is -1
+  // Return an error if quantity is negative
+  if (req.body.quantity < 0)
+    return next(new ErrorClass("Quantity must be above 1", 400));
   const existingCart = await Cart.findOne({ user: req.user._id });
+  const addingProduct = await Product.findById(req.body.productId);
 
   if (!existingCart)
     return next(new ErrorClass("No cart found with that id", 404));
@@ -122,40 +151,28 @@ const updateCart = catchAsync(async (req, res, next) => {
       new ErrorClass("No product found in the cart with that id", 404)
     );
   }
+  ///// VALIDATION FINISHED
 
-  let updatedCart;
-  // It is for deleting a product from the cart completely
-  if (existingProduct.quantity === 1 && req.body.quantity === -1) {
-    // Update cartProducts and cart totalPrice
-    updatedCart = existingCart;
-    let updatedCartProducts = existingCart.cartProducts;
-    updatedCartProducts.splice(existingProductIndex, 1);
-    updatedCart.cartProducts = updatedCartProducts;
-    updatedCart.totalPrice += req.body.quantity * existingProduct.price;
-    updatedCart.totalQuantity += req.body.quantity;
-  } else {
-    // Update product quantity and subTotal
-    let updatedProduct = existingProduct;
-    updatedProduct.quantity += req.body.quantity;
-    updatedProduct.subTotal += req.body.quantity * existingProduct.price;
+  /// UPDATE LOGIC
+  const price = addingProduct.discountedPrice || addingProduct.price;
+  const subtotal = Number((req.body.quantity * price).toFixed(2));
+  let updatedProduct = JSON.parse(JSON.stringify(existingProduct));
+  updatedProduct.quantity = req.body.quantity;
+  updatedProduct.price = Number(price.toFixed(2));
+  updatedProduct.subTotal = subtotal;
 
-    // Update cartProducts and cart totalPrice
-    updatedCart = existingCart;
-    let updatedCartProducts = existingCart.cartProducts;
-    updatedCartProducts[existingProductIndex] = updatedProduct;
-    updatedCart.cartProducts = updatedCartProducts;
-    updatedCart.totalPrice += req.body.quantity * updatedProduct.price;
-    updatedCart.totalQuantity += req.body.quantity;
-  }
+  // Update cartProducts and cart totalPrice
+  let updatedCart = existingCart;
+  let updatedCartProducts = existingCart.cartProducts;
+  updatedCartProducts[existingProductIndex] = updatedProduct;
+  updatedCart.cartProducts = updatedCartProducts;
+  updatedCart.totalPrice = updatedCart.cartProducts.reduce(
+    (sum, item) => sum + item.subTotal,
+    0
+  );
 
-  // It is for deleting cart completely when user removes the last product from the cart
-  if (updatedCart.cartProducts.length === 0) {
-    await Cart.findOneAndDelete({ user: req.user._id });
-    return res.status(204).json({
-      status: "success",
-      data: null,
-    });
-  }
+  updatedCart.totalQuantity =
+    updatedCart.totalQuantity - existingProduct.quantity + req.body.quantity;
 
   const userCart = await Cart.findOneAndUpdate(
     { user: req.user._id },
@@ -190,6 +207,7 @@ const deleteProductFromCart = catchAsync(async (req, res, next) => {
       new ErrorClass("No product found with that id in the cart", 400)
     );
 
+  // If the last product is removed from the cart, the cart will be completely deleted from the database.
   if (existingCart.cartProducts.length === 1) {
     await Cart.deleteOne({ user: req.user._id });
     return res.status(204).json({

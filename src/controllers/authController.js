@@ -74,7 +74,7 @@ const signup = catchAsync(async (req, res, next) => {
 
   // 3. Send verification code to user's email
   try {
-    const message = `Thanks for registering! \nYour vefification code is ${randomNumber}. Please enter this code to log in.`;
+    const message = `Thanks for registering! \nYour verification code is ${randomNumber}. Please enter this code to log in.`;
     await sendEmail({
       email: newUser.email,
       subject: `Verification Code (valid only for 10 minutues!)`,
@@ -83,7 +83,7 @@ const signup = catchAsync(async (req, res, next) => {
 
     return res.status(201).json({
       status: "success",
-      message: `You are successfully registered. Vefification code was sent to ${newUser.email}. Please enter the code to get access`,
+      message: `You are successfully registered. Verification code was sent to ${newUser.email}. Please enter the code to get access`,
       username: newUser.username,
     });
   } catch (error) {

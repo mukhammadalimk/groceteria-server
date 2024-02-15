@@ -75,7 +75,6 @@ const createCategory = catchAsync(async (req, res, next) => {
 
 const updateCategory = catchAsync(async (req, res, next) => {
   // Updating image in the cloudinary is implemented through a middleware
-
   const category = await Category.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,

@@ -7,7 +7,7 @@
 - Think about how to make wishlist products being able to be added only once with index 
 - Checkout with stripe and paypal 
 - Think about tracking how many times a product is sold 
-- node(61242) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.
+- Think about uploading images to mongodb directly
 
 // TODAY TODOS 
 - If a product is moved to another category, update numOfProducts property in both categories 

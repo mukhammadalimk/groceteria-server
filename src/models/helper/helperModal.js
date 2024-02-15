@@ -11,17 +11,6 @@ module.exports = {
     },
   },
 
-  discountPercentObj: {
-    type: Number,
-    validate: {
-      validator: function (val) {
-        // "this" only works in current doc on NEW document creation. It doest not work in .update()
-        return val < 100;
-      },
-      message: "Discounted percent ({VALUE}) should be below 100%",
-    },
-  },
-
   nameObj: {
     type: String,
     required: [true, "A product type must have a name"],

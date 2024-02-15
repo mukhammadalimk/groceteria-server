@@ -9,6 +9,7 @@ const {
 const {
   updateProductImages,
   uploadProductImages,
+  validateProductProperties,
 } = require("../../middlewares/productMiddlewares");
 const reviewRouter = require("../reviews/reviewRouter");
 const {
@@ -48,6 +49,7 @@ productRouter
     protectRoutes,
     restrictTo("admin"),
     multerProductOrNewsImages,
+    validateProductProperties,
     uploadProductImages,
     createProduct
   )
@@ -60,6 +62,7 @@ productRouter
     protectRoutes,
     restrictTo("admin"),
     multerProductOrNewsImages,
+    validateProductProperties,
     updateProductImages,
     updateProduct
   )

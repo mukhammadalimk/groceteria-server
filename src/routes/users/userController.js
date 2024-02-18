@@ -54,7 +54,7 @@ const makeUserAdmin = catchAsync(async (req, res, next) => {
 // These are for users
 const getUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id).select(
-    "+status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+    "+status  -orders -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
   );
 
   if (!user) return next(new ErrorClass(`No user found with that id`, 404));
@@ -116,14 +116,14 @@ const updateMe = catchAsync(async (req, res, next) => {
       new: true,
       runValidators: true,
     }).select(
-      "+status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+      "+status  -orders -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
     );
   } else {
     user = await User.findByIdAndUpdate(req.user.id, filteredBody, {
       new: true,
       runValidators: true,
     }).select(
-      "+status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+      "+status  -orders -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
     );
   }
 

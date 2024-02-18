@@ -82,7 +82,7 @@ const removeFromCompareOrWishlist = (User, Product, type) =>
 
     res.status(200).json({
       status: "success",
-      data: product,
+      data: product._id,
     });
   });
 

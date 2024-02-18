@@ -101,11 +101,11 @@ const login = catchAsync(async (req, res, next) => {
   // 2. Check if user exists and password is correct
   if (email)
     user = await User.findOne({ email }).select(
-      "+password +status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt"
+      "+password +status -orders -createdAt -updatedAt -__v -passwordChangedAt"
     );
   if (username)
     user = await User.findOne({ username }).select(
-      "+password +status -wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt"
+      "+password +status -orders -createdAt -updatedAt -__v -passwordChangedAt"
     );
 
   if (!user || !(await user.checkCandidatePassword(password, user.password))) {
@@ -188,7 +188,7 @@ const verify = catchAsync(async (req, res, next) => {
   // 1. Get user based on verification code
   const { verificationCode } = req.body;
   let user = await User.findOne({ verificationCode }).select(
-    "-wishlisted -orders -compare -createdAt -updatedAt -__v -passwordChangedAt"
+    " -orders -createdAt -updatedAt -__v -passwordChangedAt"
   );
 
   // 2. If verification code expired or verification code is invalid, send error

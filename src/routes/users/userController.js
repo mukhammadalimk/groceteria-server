@@ -20,12 +20,47 @@ const filterBody = (obj, ...alowedFields) => {
 
 // Thise are for admin
 const getAllUsers = catchAsync(async (req, res, next) => {
-  const users = await User.find();
+  const users = await User.find().select("+status");
 
   res.status(200).json({
     status: "success",
     results: users.length,
     data: users,
+  });
+});
+
+const getCustomersStats = catchAsync(async (req, res, next) => {
+  const users = await User.find({ status: { $eq: "active" } });
+
+  function convertToLocal(date) {
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
+  }
+
+  const sevenDaysBeforeStarMilliseconds =
+    new Date(Date.now()).getTime() - 7 * 24 * 60 * 60 * 1000;
+
+  const newCustomers = users.filter(
+    (i) =>
+      convertToLocal(i.createdAt).getTime() > sevenDaysBeforeStarMilliseconds
+  );
+
+  const dateObj = new Date();
+  const month = dateObj.getUTCMonth() + 1;
+  const year = dateObj.getUTCFullYear();
+  const updatedMonth = month < 10 ? `0${month}` : month;
+  const thisMonthStartDate = new Date(`${year}-${updatedMonth}-01`);
+
+  const thisMonthCustomers = users.filter(
+    (i) => convertToLocal(i.createdAt) > thisMonthStartDate
+  );
+
+  res.status(200).json({
+    status: "success",
+    data: {
+      total: users.length,
+      new: newCustomers.length,
+      thisMonth: thisMonthCustomers.length,
+    },
   });
 });
 
@@ -53,8 +88,8 @@ const makeUserAdmin = catchAsync(async (req, res, next) => {
 
 // These are for users
 const getUser = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.params.id).select(
-    "+status -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires -refreshToken"
+  const user = await User.findById(req.params.userId).select(
+    "-createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires -refreshToken"
   );
 
   if (!user) return next(new ErrorClass(`No user found with that id`, 404));
@@ -67,7 +102,7 @@ const getUser = catchAsync(async (req, res, next) => {
 });
 
 const getMe = (req, res, next) => {
-  req.params.id = req.user.id;
+  req.params.userId = req.user.id;
   next();
 };
 
@@ -156,43 +191,40 @@ const getCompare = getCompareOrWishList(User, "compare");
 const addToCompare = addToCompareOrWishlist(User, Product, "compare");
 const removeFromCompare = removeFromCompareOrWishlist(User, Product, "compare");
 
-// These are only for development process
-const createUser = catchAsync(async (req, res, next) => {
-  const user = await User.create(req.body);
+// // These are only for development process
+// const createUser = catchAsync(async (req, res, next) => {
+//   const user = await User.create(req.body);
 
-  res.status(201).json({
-    status: "success",
-    data: user,
-  });
-});
+//   res.status(201).json({
+//     status: "success",
+//     data: user,
+//   });
+// });
 
-const deleteUser = catchAsync(async (req, res, next) => {
-  await User.findByIdAndDelete(req.params.userId);
+// const deleteUser = catchAsync(async (req, res, next) => {
+//   await User.findByIdAndDelete(req.params.userId);
 
-  res.status(204).json({
-    status: "success",
-    data: null,
-  });
-});
+//   res.status(204).json({
+//     status: "success",
+//     data: null,
+//   });
+// });
 
-const updateUser = catchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(req.params.userId, req.body, {
-    new: true,
-    runValidators: true,
-  });
+// const updateUser = catchAsync(async (req, res, next) => {
+//   const user = await User.findByIdAndUpdate(req.params.userId, req.body, {
+//     new: true,
+//     runValidators: true,
+//   });
 
-  res.status(200).json({
-    status: "success",
-    data: user,
-  });
-});
+//   res.status(200).json({
+//     status: "success",
+//     data: user,
+//   });
+// });
 
 module.exports = {
   getAllUsers,
   getUser,
-  createUser,
-  deleteUser,
-  updateUser,
   updateMe,
   deleteMe,
   makeUserAdmin,
@@ -203,4 +235,5 @@ module.exports = {
   getCompare,
   removeFromWishlist,
   removeFromCompare,
+  getCustomersStats,
 };

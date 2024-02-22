@@ -141,7 +141,7 @@ const updateOrderToDelivered = catchAsync(async (req, res, next) => {
 const updateOrderToOnTheWay = catchAsync(async (req, res, next) => {
   await Order.updateOne(
     { _id: req.params.orderId },
-    { status: "on the way", $unset: { deliveredAt: "" } },
+    { status: "on the way", isDelivered: false, $unset: { deliveredAt: "" } },
     { new: true, runValidators: true }
   );
 

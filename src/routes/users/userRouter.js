@@ -20,9 +20,6 @@ const reviewRouter = require("../reviews/reviewRouter");
 const {
   getAllUsers,
   getUser,
-  updateUser,
-  deleteUser,
-  createUser,
   updateMe,
   makeUserAdmin,
   deleteMe,
@@ -33,6 +30,7 @@ const {
   addToWishlist,
   removeFromWishlist,
   removeFromCompare,
+  getCustomersStats,
 } = require("./userController");
 
 const userRouter = express.Router();
@@ -66,17 +64,14 @@ userRouter
   .route("/update-to-admin")
   .patch(protectRoutes, restrictTo("admin"), makeUserAdmin);
 
-// This route is only for development
-userRouter.route("/").post(protectRoutes, restrictTo("admin"), createUser);
-
-// Do NOT update passwords with this!
-userRouter.route("/:userId").patch(updateUser).delete(deleteUser);
-
 // Protect and restrict routes
 userRouter.use(protectRoutes);
 
 userRouter.delete("/deleteMe", deleteMe);
 userRouter.get("/me", getMe, getUser);
+
+userRouter.get("/:userId", restrictTo("admin"), getUser);
+userRouter.get("/stats/customers", restrictTo("admin"), getCustomersStats);
 
 // WISHLIST ROUTES
 userRouter.get("/wishlist", getWishlist);

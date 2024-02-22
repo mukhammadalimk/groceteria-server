@@ -44,11 +44,12 @@ const addToCompareOrWishlist = (User, Product, type) =>
     }
 
     listType.push(product._id);
-    await user.save({ validateBeforeSave: false });
+    const updatedUser = await user.save({ validateBeforeSave: false });
+    updatedUser.refreshToken = undefined;
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      data: product,
+      data: updatedUser,
     });
   });
 
@@ -78,11 +79,12 @@ const removeFromCompareOrWishlist = (User, Product, type) =>
     }
 
     listType.splice(removingProductIndex, 1);
-    await user.save({ validateBeforeSave: false });
+    const updatedUser = await user.save({ validateBeforeSave: false });
+    updatedUser.refreshToken = undefined;
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      data: product._id,
+      data: updatedUser,
     });
   });
 

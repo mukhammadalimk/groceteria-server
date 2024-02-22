@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
     photo: {
       type: String,
       default:
-        "https://res.cloudinary.com/groceteria/image/upload/v1658398936/news/ffwlijrlur4gz7x5mz3m.jpg",
+        "https://res.cloudinary.com/groceteria/image/upload/v1707303431/guevckwnofd1li9l2kx3.jpg",
     },
     role: {
       type: String,
@@ -61,12 +61,7 @@ const userSchema = new mongoose.Schema(
     },
     // This is how we embed addresses into users
     addresses: [helperModal.addressObj],
-    orders: [
-      {
-        type: mongoose.Schema.ObjectId,
-        ref: "Order",
-      },
-    ],
+
     cardInfo: {
       cardNumber: {
         type: Number,
@@ -102,6 +97,7 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: Date,
     resetToken: String,
     resetTokenExpires: Date,
+    refreshToken: String,
   },
   {
     timestamps: true,

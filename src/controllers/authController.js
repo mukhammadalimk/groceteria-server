@@ -6,31 +6,38 @@ const catchAsync = require("../utils/catchAsync");
 const ErrorClass = require("../utils/errorClass");
 const sendEmail = require("../utils/email");
 
-const signToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
-};
+const createSendToken = async (user, res) => {
+  const accessToken = jwt.sign(
+    { id: user._id },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "5 days" }
+  );
 
-const createSendToken = (user, statusCode, res) => {
-  const token = signToken(user._id);
+  const refreshToken = jwt.sign(
+    { id: user._id },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: "60 days" }
+  );
+
+  await User.findByIdAndUpdate(user._id, { refreshToken });
 
   const cookieOptions = {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOnly: true, // this ensures that cookie can not be modifed by the browser
+    httpOnly: true, // this ensures that cookie can not be modifed by the browser,
   };
   if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
 
-  // Remove password from output
+  res.cookie("jwt", refreshToken, cookieOptions);
+
+  // Remove password and refreshToken from output
   user.password = undefined;
+  user.refreshToken = undefined;
 
-  res.cookie("jwt", token, cookieOptions);
-
-  return res.status(statusCode).json({
+  return res.status(200).json({
     status: "success",
-    token,
+    accessToken,
     user,
   });
 };
@@ -45,6 +52,152 @@ const sendingEmailError = async (user) => {
     500
   );
 };
+
+const protectRoutes = catchAsync(async (req, res, next) => {
+  // 1) Get token and check if it exists
+  let accessToken;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    accessToken = req.headers.authorization.split(" ")[1];
+  }
+
+  if (!accessToken) {
+    return next(
+      new ErrorClass(`You are not logged in. Please log in to get access`, 401)
+    );
+  }
+
+  // 2) accessToken verification
+  const decoded = await promisify(jwt.verify)(
+    accessToken,
+    process.env.ACCESS_TOKEN_SECRET
+  );
+
+  // 3) Check if user still exists
+  const loggingUser = await User.findById(decoded.id);
+
+  if (!loggingUser)
+    return next(
+      new ErrorClass(`The user belonging to the token no longer exists`, 401)
+    );
+
+  // 4) Check if user changed password after jwt token was issued
+  if (loggingUser.changePasswordAfterToken(decoded.iat)) {
+    return next(
+      new ErrorClass(
+        `The user has recently changed password. Please log in again!`,
+        401
+      )
+    );
+  }
+
+  // Allow access
+  req.user = loggingUser;
+  // req.token = accessToken;
+
+  next();
+});
+
+const getRefreshToken = catchAsync(async (req, res, next) => {
+  // 1) Get JWT from the cookies
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(401);
+
+  const refreshToken = cookies.jwt;
+
+  // 3) Check if user still exists
+  const loggingUser = await User.findOne({ refreshToken });
+
+  if (!loggingUser)
+    return next(
+      new ErrorClass(`The user belonging to the token no longer exists`, 401)
+    );
+
+  // 4) Evaluate JWT
+  const decoded = await promisify(jwt.verify)(
+    refreshToken,
+    process.env.REFRESH_TOKEN_SECRET
+  );
+
+  if (decoded.id != loggingUser._id)
+    return next(
+      new ErrorClass(`The refresh token does not belong to the user`, 403)
+    );
+
+  const accessToken = jwt.sign(
+    { id: loggingUser._id },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "5 days" }
+  );
+
+  return res.status(200).json({
+    status: "success",
+    accessToken,
+  });
+});
+
+const login = catchAsync(async (req, res, next) => {
+  // 1. Check if user is logging in with email or username
+  const email = req.body.email ? req.body.email : null;
+  const username = req.body.username ? req.body.username : null;
+  const password = req.body.password;
+
+  let user;
+  // 2. Check if user exists and password is correct
+  if (email)
+    user = await User.findOne({ email }).select(
+      "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+    );
+  if (username)
+    user = await User.findOne({ username }).select(
+      "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+    );
+
+  if (!user || !(await user.checkCandidatePassword(password, user.password))) {
+    return next(
+      new ErrorClass(`Password or email (username) is not correct`, 401)
+    );
+  }
+
+  // If user is in pending mode and the verificationcode expires, Send verification code again to user's email to make them active
+  if (user.status === "pending" && user.verificationCodeExpires < Date.now()) {
+    try {
+      const randomNumber = Math.floor(100000 + Math.random() * 900000);
+      user.verificationCode = randomNumber;
+      user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
+      await user.save({ validateBeforeSave: false });
+
+      const message = `Your account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
+      await sendEmail({
+        email: user.email,
+        subject: `Verification Code (valid only for 10 minutues!)`,
+        message,
+      });
+
+      return res.status(401).json({
+        status: "failure",
+        message: `Your account is in pending mode. Verification code was sent to yout email (${user.email}). Please enter the code to get access`,
+        username: user.username,
+      });
+    } catch (error) {
+      await sendingEmailError(user);
+    }
+  }
+
+  // If user is in pending mode but verification code's not expired yet, we just inform the user about the verification code
+  if (user.status === "pending" && user.verificationCodeExpires > Date.now()) {
+    return res.status(401).json({
+      status: "failure",
+      message: `Your account is in pending mode. Please enter the code sent "${user.email}" to get access.`,
+      username: user.username,
+    });
+  }
+
+  // 3. If everything is okay, send token and log user in
+  createSendToken(user, res);
+});
 
 const signup = catchAsync(async (req, res, next) => {
   // 1. Check if email or username already exists
@@ -91,67 +244,6 @@ const signup = catchAsync(async (req, res, next) => {
   }
 });
 
-const login = catchAsync(async (req, res, next) => {
-  // 1. Check if user is logging in with email or username
-  const email = req.body.email ? req.body.email : null;
-  const username = req.body.username ? req.body.username : null;
-  const password = req.body.password;
-
-  let user;
-  // 2. Check if user exists and password is correct
-  if (email)
-    user = await User.findOne({ email }).select(
-      "+password +status -orders -createdAt -updatedAt -__v -passwordChangedAt"
-    );
-  if (username)
-    user = await User.findOne({ username }).select(
-      "+password +status -orders -createdAt -updatedAt -__v -passwordChangedAt"
-    );
-
-  if (!user || !(await user.checkCandidatePassword(password, user.password))) {
-    return next(
-      new ErrorClass(`Password or email (username) is not correct`, 401)
-    );
-  }
-
-  // If user is in pending mode and the verificationcode expires, Send verification code to user's email to make them active
-  if (user.status === "pending" && user.verificationCodeExpires < Date.now()) {
-    try {
-      const randomNumber = Math.floor(100000 + Math.random() * 900000);
-      user.verificationCode = randomNumber;
-      user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
-      await user.save({ validateBeforeSave: false });
-
-      const message = `Your account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
-      await sendEmail({
-        email: user.email,
-        subject: `Verification Code (valid only for 10 minutues!)`,
-        message,
-      });
-
-      return res.status(401).json({
-        status: "failure",
-        message: `Your account is in pending mode. Verification code was sent to yout email (${user.email}). Please enter the code to get access`,
-        username: user.username,
-      });
-    } catch (error) {
-      await sendingEmailError(user);
-    }
-  }
-
-  // If user is in pending mode but verification code's not expired yet, we just inform the user about the verification code
-  if (user.status === "pending" && user.verificationCodeExpires > Date.now()) {
-    return res.status(401).json({
-      status: "failure",
-      message: `Your account is in pending mode. Please enter the code sent "${user.email}" to get access.`,
-      username: user.username,
-    });
-  }
-
-  // 3. If everything is okay, send token and log user in
-  createSendToken(user, 200, res);
-});
-
 const sendVerificationCodeAgain = catchAsync(async (req, res, next) => {
   const { username } = req.body;
 
@@ -188,7 +280,7 @@ const verify = catchAsync(async (req, res, next) => {
   // 1. Get user based on verification code
   const { verificationCode } = req.body;
   let user = await User.findOne({ verificationCode }).select(
-    " -orders -createdAt -updatedAt -__v -passwordChangedAt"
+    " -createdAt -updatedAt -__v -passwordChangedAt"
   );
 
   // 2. If verification code expired or verification code is invalid, send error
@@ -206,64 +298,35 @@ const verify = catchAsync(async (req, res, next) => {
   user.verificationCodeExpires = undefined;
   user.status = "active";
   await user.save({ validateBeforeSave: false });
-
-  createSendToken(user, 201, res);
+  createSendToken(user, res);
 });
 
 const logout = catchAsync(async (req, res, next) => {
-  res.cookie("jwt", "loggedout", {
-    expires: new Date(Date.now() + 10 * 1000),
+  // 1) Get JWT from the cookies
+
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(204); // No content
+
+  const refreshToken = cookies.jwt;
+
+  const loggingOutUser = await User.findOne({ refreshToken });
+
+  const cookieOptions = {
+    expires: new Date(Date.now() + 10),
     httpOnly: true,
-  });
+  };
 
-  return res.status(200).json({
-    status: "success",
-    message: "You are successfully logged out",
-  });
-});
-
-const protectRoutes = catchAsync(async (req, res, next) => {
-  // 1) Get token and check if it exists
-  let token;
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
+  if (!loggingOutUser) {
+    res.clearCookie("jwt", cookieOptions);
+    return res.sendStatus(204); // No content
   }
 
-  if (!token) {
-    return next(
-      new ErrorClass(`You are not logged in. Please log in to get access`, 401)
-    );
-  }
+  // Delete refreshToken from the database
+  await User.updateOne({ refreshToken }, { $unset: { refreshToken: "" } });
 
-  // 2) Token verification
-  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  res.clearCookie("jwt", cookieOptions);
 
-  // 3) Check if user still exists
-  const loggingUser = await User.findById(decoded.id);
-
-  if (!loggingUser)
-    return next(
-      new ErrorClass(`The user belonging to the token no longer exists`, 401)
-    );
-
-  // 4) Check if user changed password after jwt token was issued
-  if (loggingUser.changePasswordAfterToken(decoded.iat)) {
-    return next(
-      new ErrorClass(
-        `The user has recently changed password. Please log in again!`,
-        401
-      )
-    );
-  }
-
-  // Allow access
-  req.user = loggingUser;
-  req.token = token;
-
-  next();
+  return res.sendStatus(204); // No content
 });
 
 const restrictTo = (...roles) => {
@@ -339,7 +402,6 @@ const resetPassword = catchAsync(async (req, res, next) => {
     return next(new ErrorClass(`Token is invalid or has expired`, 400));
 
   // If the new password is the same as the old one, send an error
-
   if (await user.checkCandidatePassword(req.body.password, user.password)) {
     return next(
       new ErrorClass(
@@ -360,7 +422,7 @@ const resetPassword = catchAsync(async (req, res, next) => {
   // This logic is implemented in userModel with middleware
 
   // 4) Log the user in
-  createSendToken(user, 200, res);
+  createSendToken(user, res);
 });
 
 const updateMyPassword = catchAsync(async (req, res, next) => {
@@ -374,13 +436,23 @@ const updateMyPassword = catchAsync(async (req, res, next) => {
     return next(new ErrorClass(`Your current password is not correct.`, 401));
   }
 
+  // 3. If the new password is the same with the current password, we send an error
+  if (await user.checkCandidatePassword(password, user.password)) {
+    return next(
+      new ErrorClass(
+        `The current password is the same with the new password. Please choose a different password.`,
+        403
+      )
+    );
+  }
+
   // 2) Update user password
   user.password = password;
   user.passwordConfirm = passwordConfirm;
   await user.save();
 
   // 4) Log user in, send JWT
-  createSendToken(user, 200, res);
+  createSendToken(user, res);
 });
 
 const checkResetTokenExist = catchAsync(async (req, res, next) => {
@@ -416,4 +488,5 @@ module.exports = {
   updateMyPassword,
   sendVerificationCodeAgain,
   checkResetTokenExist,
+  getRefreshToken,
 };

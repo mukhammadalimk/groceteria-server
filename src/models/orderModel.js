@@ -10,7 +10,11 @@ const orderSchema = new mongoose.Schema(
         image: { type: String, required: true },
         price: { type: Number, required: true },
         quantity: { type: Number, required: true },
-        subTotal: { type: Number, required: true },
+        subTotal: {
+          type: Number,
+          required: true,
+          set: (val) => val.toFixed(2),
+        },
         productId: {
           type: mongoose.Schema.ObjectId,
           ref: "Product",
@@ -34,14 +38,8 @@ const orderSchema = new mongoose.Schema(
     notes: { type: String, trim: true },
     status: {
       type: String,
-      default: "Order Received",
-      enum: [
-        "Order Received",
-        "Processing",
-        "On the way",
-        "Delivered",
-        "Cancelled",
-      ],
+      default: "processing",
+      enum: ["processing", "paid", "on the way", "delivered", "cancelled"],
     },
   },
   { timestamps: true }

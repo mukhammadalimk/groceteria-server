@@ -3,6 +3,7 @@ const cors = require("cors");
 const xss = require("xss-clean");
 const helmet = require("helmet");
 const express = require("express");
+const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const ErrorClass = require("./utils/errorClass");
 const cartRouter = require("./routes/cart/cartRouter");
@@ -19,14 +20,19 @@ const app = express();
 
 // GLOBAL MIDDLEWARES
 // Implement cors
-app.use(cors());
 // Access-Control-Allow-Origin *
 // api.natours.com, front-end natours.com
 // app.use(cors({
 //   origin: 'https://www.natours.com'
 // }))
 
-app.options("*", cors());
+const corsOptions = {
+  origin: "http://localhost:3000",
+  credentials: true, //access-control-allow-credentials:true
+};
+app.use(cors(corsOptions));
+
+// app.options("*", cors());
 // app.options('/api/v1/tours/:id', cors());
 
 // Set security HTTP headers
@@ -43,6 +49,9 @@ app.use("/api", limiter);
 // Body parser
 app.use(express.json());
 
+// Middleware for cookies
+app.use(cookieParser());
+
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize()); // this filters out all the $ signs from req.params, req.body, req.queryString
 
@@ -52,7 +61,7 @@ app.use(xss()); // this will clean any user input from malicious HTML code
 // Prevent parameter pollution
 app.use(
   hpp({
-    whitelist: ["price", "ratingsAverage", "ratingsQuantity", "leftInStock"],
+    whitelist: ["price", "ratingsAverage", "ratingsQuantity", "inStock"],
   })
 );
 

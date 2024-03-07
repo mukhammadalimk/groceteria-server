@@ -61,7 +61,6 @@ const userSchema = new mongoose.Schema(
     },
     // This is how we embed addresses into users
     addresses: [helperModal.addressObj],
-
     cardInfo: {
       cardNumber: {
         type: Number,
@@ -83,6 +82,12 @@ const userSchema = new mongoose.Schema(
     verificationCode: Number,
     verificationCodeExpires: Date,
     wishlisted: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: "Product",
+      },
+    ],
+    orderedProducts: [
       {
         type: mongoose.Schema.ObjectId,
         ref: "Product",

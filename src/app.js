@@ -18,22 +18,11 @@ const categoryRouter = require("./routes/categories/categoryRouter");
 
 const app = express();
 
-// GLOBAL MIDDLEWARES
-// Implement cors
-// Access-Control-Allow-Origin *
-// api.natours.com, front-end natours.com
-// app.use(cors({
-//   origin: 'https://www.natours.com'
-// }))
-
 const corsOptions = {
   origin: "http://localhost:3000",
   credentials: true, //access-control-allow-credentials:true
 };
 app.use(cors(corsOptions));
-
-// app.options("*", cors());
-// app.options('/api/v1/tours/:id', cors());
 
 // Set security HTTP headers
 app.use(helmet());

@@ -2,12 +2,23 @@ const Order = require("../../models/orderModel");
 const ErrorClass = require("../../utils/errorClass");
 const catchAsync = require("../../utils/catchAsync");
 const APIFeatures = require("../../utils/APIFeatures");
+const User = require("../../models/userModel");
 
 // This routes are for both admin and users
 
 // This routes are for users
 const createOrder = catchAsync(async (req, res, next) => {
   const order = await Order.create({ ...req.body, user: req.user.id });
+
+  const user = await User.findById(req.user.id);
+
+  let orderedProductsIds = user.orderedProducts || [];
+
+  req.body.orderedProducts.forEach((i) => orderedProductsIds.push(i.productId));
+  const uniqueArray = new Set(orderedProductsIds.map((i) => i.toString()));
+
+  user.orderedProducts = [...uniqueArray];
+  await user.save({ validateBeforeSave: false });
 
   return res.status(201).json({
     status: "success",
@@ -43,8 +54,9 @@ const getMyOrders = catchAsync(async (req, res, next) => {
   const orders = await features.query;
 
   if (orders.length === 0) {
-    return res.status(204).json({
-      data: "No orders found for this user",
+    return res.status(200).json({
+      message: "No orders found for this user",
+      data: [],
     });
   }
 
@@ -70,7 +82,9 @@ const getOrder = catchAsync(async (req, res, next) => {
 
 // This routes are for ADMINS
 const getUserOrders = catchAsync(async (req, res, next) => {
-  const orders = await Order.find({ user: req.params.userId });
+  const orders = await Order.find({ user: req.params.userId }).sort(
+    "-createdAt"
+  );
 
   if (!orders) {
     return next(new ErrorClass(`No orders found for this user`, 404));
@@ -285,6 +299,9 @@ const getOrdersRevenueStats = catchAsync(async (req, res, next) => {
   );
 
   const calculateDifference = (newPrice, oldPrice) => {
+    if (newPrice === 0 && oldPrice === 0) return 0;
+    if (newPrice === 0) return -oldPrice;
+    if (oldPrice === 0) return newPrice;
     if (newPrice >= oldPrice) {
       return Number(((newPrice - oldPrice) / (oldPrice / 100)).toFixed(2));
     } else {

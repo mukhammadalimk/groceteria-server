@@ -5,6 +5,9 @@ const crypto = require("crypto");
 const catchAsync = require("../utils/catchAsync");
 const ErrorClass = require("../utils/errorClass");
 const sendEmail = require("../utils/email");
+require("dotenv").config();
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const createSendToken = async (user, res) => {
   const accessToken = jwt.sign(
@@ -144,21 +147,58 @@ const login = catchAsync(async (req, res, next) => {
   const username = req.body.username ? req.body.username : null;
   const password = req.body.password;
 
+  // GOOGLE LOGIN
   let user;
-  // 2. Check if user exists and password is correct
-  if (email)
+  if (req.query.token) {
+    const ticket = await client.verifyIdToken({
+      idToken: req.query.token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const { email } = ticket.getPayload();
+
     user = await User.findOne({ email }).select(
-      "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
-    );
-  if (username)
-    user = await User.findOne({ username }).select(
-      "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+      "+status -createdAt -updatedAt -__v -passwordChangedAt"
     );
 
-  if (!user || !(await user.checkCandidatePassword(password, user.password))) {
-    return next(
-      new ErrorClass(`Password or email (username) is not correct`, 401)
-    );
+    if (!user) {
+      return next(
+        new ErrorClass(`No user found with this email: ${email}`, 401)
+      );
+    }
+
+    // We do not need to verify the user via verification code if the user trie to log in with the google oauth.
+    if (user.status === "pending") {
+      user.verificationCode = undefined;
+      user.verificationCodeExpires = undefined;
+      user.status = "active";
+      await user.save({ validateBeforeSave: false });
+    }
+
+    // If everything is okay, send token and log user in
+    createSendToken(user, res);
+    return;
+  }
+
+  /// MANUAL LOGIN
+  // 2. Check if user exists and password is correct
+  if (!req.query.token) {
+    if (email)
+      user = await User.findOne({ email }).select(
+        "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+      );
+    if (username)
+      user = await User.findOne({ username }).select(
+        "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+      );
+
+    if (
+      !user ||
+      !(await user.checkCandidatePassword(password, user.password))
+    ) {
+      return next(
+        new ErrorClass(`Password or email (username) is not correct`, 401)
+      );
+    }
   }
 
   // If user is in pending mode and the verificationcode expires, Send verification code again to user's email to make them active

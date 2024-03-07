@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 const Product = require("../../models/productModel");
 const APIFeatures = require("../../utils/APIFeatures");
 const ErrorClass = require("../../utils/errorClass");
@@ -35,19 +37,28 @@ const deleteAllProducts = catchAsync(async (req, res, next) => {
 });
 
 const getProduct = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.productId)
-    .populate("reviews")
-    .populate({
-      path: "category",
-    });
+  const result = await Product.aggregate([
+    { $match: { _id: ObjectId(req.params.productId) } },
+    {
+      $lookup: {
+        from: "reviews",
+        localField: "_id",
+        foreignField: "product",
+        as: "reviewsCount",
+      },
+    },
+    { $addFields: { reviewsCount: { $size: "$reviewsCount" } } },
+  ]);
 
-  if (!product) {
+  const product = await Product.populate(result, { path: "category" });
+
+  if (!product[0]) {
     return next(new ErrorClass(`No product found with this id`, 404));
   }
 
   return res.status(200).json({
     status: "success",
-    data: product,
+    data: product[0],
   });
 });
 
@@ -122,11 +133,9 @@ const updateProduct = catchAsync(async (req, res, next) => {
       new: true,
       runValidators: true,
     }
-  )
-    .populate("reviews")
-    .populate({
-      path: "category",
-    });
+  ).populate("category");
+
+  product.reviewsCount = req.body.reviewsCount;
 
   return res.status(200).json({
     status: "success",

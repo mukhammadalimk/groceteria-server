@@ -11,7 +11,7 @@ const reviewSchema = new mongoose.Schema(
     rating: {
       type: Number,
       required: [true, "Review must have a rating"],
-      min: [1, "Rating should be above 1"],
+      min: [0.5, "Rating should be above 0.5"],
       max: [5, "Rating should be below 5"],
     },
     product: {
@@ -24,6 +24,22 @@ const reviewSchema = new mongoose.Schema(
       ref: "User",
       required: [true, "Review must belong to a user."],
     },
+    replies: [
+      {
+        text: {
+          type: String,
+          required: [true, "Reply can not be empty"],
+          trim: true,
+        },
+        user: {
+          type: mongoose.Schema.ObjectId,
+          ref: "User",
+          required: [true, "Review must belong to a user."],
+        },
+        createdAt: { type: Date, required: true },
+        updatedAt: Date,
+      },
+    ],
   },
   {
     timestamps: true,
@@ -31,12 +47,16 @@ const reviewSchema = new mongoose.Schema(
 );
 
 // Restricting users from writing multiple reviews on product
-// reviewSchema.index({ product: 1, user: 1 }, { unique: true });
+reviewSchema.index({ product: 1, user: 1 }, { unique: true });
 
 // Populating reviews with user
 reviewSchema.pre(/^find/, function (next) {
   this.populate({
     path: "user",
+    select: "name photo username",
+  });
+  this.populate({
+    path: "replies.user",
     select: "name photo username",
   });
   next();

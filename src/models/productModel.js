@@ -34,13 +34,6 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// Reviews will be virtually populated for products
-productSchema.virtual("reviews", {
-  ref: "Review",
-  foreignField: "product",
-  localField: "_id",
-});
-
 // Document Middleware
 productSchema.pre("save", function (next) {
   this.slug = slugify(this.name, { lower: true });

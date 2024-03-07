@@ -32,7 +32,6 @@ const {
   removeFromCompare,
   getCustomersStats,
 } = require("./userController");
-
 const userRouter = express.Router();
 
 // This is for getting all reviews of one person

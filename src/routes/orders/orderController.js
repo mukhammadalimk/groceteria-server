@@ -1,34 +1,307 @@
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Order = require("../../models/orderModel");
 const ErrorClass = require("../../utils/errorClass");
 const catchAsync = require("../../utils/catchAsync");
 const APIFeatures = require("../../utils/APIFeatures");
 const User = require("../../models/userModel");
+const Cart = require("../../models/cartModel");
+const base = "https://api-m.sandbox.paypal.com";
+const {
+  PAYPAL_CLIENT_ID,
+  PAYPAL_CLIENT_SECRET,
+  STRIPE_WEBHOOK_SECRET,
+  STRIPE_SECRET_KEY,
+  STRIPE_PUBLISHABLE_KEY,
+} = process.env;
+const fetch = require("node-fetch");
 
-// This routes are for both admin and users
+////////////////////////////////////////////////
+/// STRIPE INTEGRATION
+const getCheckoutSession = catchAsync(async (req, res, next) => {
+  // 1. Get cart of the user
+  const order = await Order.create({ ...req.body, user: req.user._id });
+  // console.log(`${req.get("origin")}/orders`);
+  // console.log(`${req.get("origin")}/checkout?alert=cancelled`);
+  const lineItems = req.body.orderedProducts.map((item) => {
+    return {
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: item.name,
+          images: [item.image],
+        },
+        unit_amount: item.price * 100,
+      },
+      quantity: item.quantity,
+    };
+  });
 
-// This routes are for users
-const createOrder = catchAsync(async (req, res, next) => {
-  const order = await Order.create({ ...req.body, user: req.user.id });
+  // 2) Create checkout session
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      success_url: `http://localhost:3000/orders/${order._id}?alert=successful`,
+      cancel_url: `http://localhost:3000/checkout?alert=cancelled`,
+      customer_email: req.user.email,
+      client_reference_id: order._id,
+      line_items: lineItems,
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            display_name: "Groceteria delivery",
+            fixed_amount: {
+              amount: order.deliveryFee ? order.deliveryFee * 100 : 0,
+              currency: "usd",
+            },
+            type: "fixed_amount",
+          },
+        },
+      ],
+    });
 
-  const user = await User.findById(req.user.id);
+    // 3) Create session as response
+    res.status(200).json({
+      status: "success",
+      session,
+    });
+  } catch (error) {
+    await Order.findByIdAndDelete(order._id);
+    return next(new ErrorClass("Failed to create stripe session", 400));
+  }
+});
+
+const webhookCheckout = (req, res, next) => {
+  const signature = req.headers["stripe-signature"];
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    return res.status(400).send(`Webhook error: ${err.message}`);
+  }
+
+  if (event.type === "checkout.session.completed")
+    updateBookingCheckout(event.data.object);
+  // else {
+  //   cancelOrder(event.data.object);
+  // }
+
+  res.status(200).json({ received: true });
+};
+
+const updateBookingCheckout = async (session) => {
+  const order = await Order.findByIdAndUpdate(
+    session.client_reference_id,
+    {
+      status: "paid",
+      isPaid: true,
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  await Cart.findOneAndDelete({
+    user: order.user,
+  });
+
+  const user = await User.findById(order.user);
 
   let orderedProductsIds = user.orderedProducts || [];
 
-  req.body.orderedProducts.forEach((i) => orderedProductsIds.push(i.productId));
+  order.orderedProducts.forEach((i) => orderedProductsIds.push(i.productId));
   const uniqueArray = new Set(orderedProductsIds.map((i) => i.toString()));
 
   user.orderedProducts = [...uniqueArray];
   await user.save({ validateBeforeSave: false });
+};
 
-  return res.status(201).json({
-    status: "success",
-    data: order,
+const getStripePublishableKey = catchAsync(async (req, res, next) => {
+  return res.status(200).json({
+    publishableKey: STRIPE_PUBLISHABLE_KEY,
   });
 });
 
+////////////////////////////////////////////////
+/// PAYPAL INTEGRATION
+const getPaypalClientId = catchAsync(async (req, res, next) => {
+  return res.status(200).json({
+    clientId: PAYPAL_CLIENT_ID,
+  });
+});
+
+const generateAccessToken = async () => {
+  try {
+    if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
+      throw new Error("MISSING_API_CREDENTIALS");
+    }
+    const auth = Buffer.from(
+      PAYPAL_CLIENT_ID + ":" + PAYPAL_CLIENT_SECRET
+    ).toString("base64");
+
+    const response = await fetch(`${base}/v1/oauth2/token`, {
+      method: "POST",
+      body: "grant_type=client_credentials",
+      headers: {
+        Authorization: `Basic ${auth}`,
+      },
+    });
+
+    const data = await response.json();
+    return data.access_token;
+  } catch (error) {
+    console.error("Failed to generate Access Token:", error.response);
+  }
+};
+
+const createOrder = async (order) => {
+  const accessToken = await generateAccessToken();
+  const url = `${base}/v2/checkout/orders`;
+  const payload = {
+    intent: "CAPTURE",
+    purchase_units: [
+      {
+        amount: {
+          currency_code: "USD",
+          value: order.totalPrice,
+          breakdown: {
+            item_total: {
+              currency_code: "USD",
+              value: order.totalPrice - order.deliveryFee,
+            },
+            shipping: {
+              currency_code: "USD",
+              value: order.deliveryFee,
+            },
+          },
+        },
+        items: order.orderedProducts.map((item) => {
+          return {
+            name: item.name,
+            unit_amount: {
+              currency_code: "USD",
+              value: item.price,
+            },
+            quantity: item.quantity,
+          };
+        }),
+      },
+    ],
+  };
+
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  return handleResponse(response);
+};
+
+const captureOrder = async (orderID) => {
+  const accessToken = await generateAccessToken();
+  const url = `${base}/v2/checkout/orders/${orderID}/capture`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return handleResponse(response);
+};
+
+async function handleResponse(response) {
+  try {
+    const jsonResponse = await response.json();
+    return {
+      jsonResponse,
+      httpStatusCode: response.status,
+    };
+  } catch (err) {
+    const errorMessage = await response.text();
+    throw new Error(errorMessage);
+  }
+}
+
+const createOrderInPaypal = async (req, res) => {
+  try {
+    // use the cart information passed from the front-end to calculate the order amount detals
+    const { jsonResponse, httpStatusCode } = await createOrder(req.body);
+    await Order.create({ ...req.body, paypalOrderId: jsonResponse.id });
+    return res.status(httpStatusCode).json(jsonResponse);
+  } catch (error) {
+    console.error("Failed to create order:", error.response);
+    return res.status(500).json({ error: "Failed to create order." });
+  }
+};
+
+const captureOrderInPaypal = async (req, res) => {
+  try {
+    const { paypalOrderId } = req.params;
+    const { jsonResponse, httpStatusCode } = await captureOrder(paypalOrderId);
+
+    const order = await Order.findOneAndUpdate(
+      { paypalOrderId },
+      {
+        isPaid: true,
+        status: "paid",
+      }
+    );
+
+    await Cart.findOneAndDelete({ user: req.user._id });
+    const user = await User.findById(order.user);
+
+    let orderedProductsIds = user.orderedProducts || [];
+
+    order.orderedProducts.forEach((i) => orderedProductsIds.push(i.productId));
+    const uniqueArray = new Set(orderedProductsIds.map((i) => i.toString()));
+
+    user.orderedProducts = [...uniqueArray];
+    await user.save({ validateBeforeSave: false });
+    return res.status(httpStatusCode).json(jsonResponse);
+  } catch (error) {
+    console.error("Failed to create order:", error);
+    return res.status(500).json({ error: "Failed to capture order." });
+  }
+};
+
+////////////////////////////////////////////////
+
+// This routes are for users
+// const createOrderCheckout = catchAsync(async (req, res, next) => {
+//   const order = await Order.create({ ...req.body, user: req.user.id });
+
+//   const user = await User.findById(req.user.id);
+
+//   let orderedProductsIds = user.orderedProducts || [];
+
+//   req.body.orderedProducts.forEach((i) => orderedProductsIds.push(i.productId));
+//   const uniqueArray = new Set(orderedProductsIds.map((i) => i.toString()));
+
+//   user.orderedProducts = [...uniqueArray];
+//   await user.save({ validateBeforeSave: false });
+
+//   return res.status(201).json({
+//     status: "success",
+//     data: order,
+//   });
+// });
+
 const cancelOrder = catchAsync(async (req, res, next) => {
-  const order = await Order.findByIdAndUpdate(
-    req.params.orderId,
+  const order = await Order.findOneAndUpdate(
+    { paypalOrderId: req.params.paypalOrderId },
     { status: "cancelled" },
     {
       new: true,
@@ -40,7 +313,6 @@ const cancelOrder = catchAsync(async (req, res, next) => {
 
   return res.status(200).json({
     status: "success",
-    data: order,
   });
 });
 
@@ -193,6 +465,7 @@ const getOrdersStats = catchAsync(async (req, res, next) => {
   });
 });
 
+// TODO: Fix this week and last weeks revenue
 const getOrdersRevenueStats = catchAsync(async (req, res, next) => {
   const orders = await Order.find();
   if (!orders)
@@ -354,13 +627,18 @@ const getOrderByMonth = catchAsync(async (req, res, next) => {
 module.exports = {
   getAllOrders,
   getOrder,
-  createOrder,
-  getMyOrders,
   cancelOrder,
+  getPaypalClientId,
+  webhookCheckout,
+  getCheckoutSession,
+  getStripePublishableKey,
+  getMyOrders,
   getUserOrders,
   updateOrderToDelivered,
   updateOrderToOnTheWay,
   getRecentOrders,
   getOrdersStats,
   getOrdersRevenueStats,
+  createOrderInPaypal,
+  captureOrderInPaypal,
 };

@@ -41,6 +41,7 @@ const orderSchema = new mongoose.Schema(
       default: "processing",
       enum: ["processing", "paid", "on the way", "delivered", "cancelled"],
     },
+    paypalOrderId: String,
   },
   { timestamps: true }
 );

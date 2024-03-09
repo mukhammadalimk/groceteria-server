@@ -4,7 +4,6 @@ const {
   restrictTo,
 } = require("../../controllers/authController");
 const {
-  createOrder,
   getOrder,
   cancelOrder,
   getMyOrders,
@@ -15,6 +14,11 @@ const {
   getRecentOrders,
   getOrdersStats,
   getOrdersRevenueStats,
+  getCheckoutSession,
+  getPaypalClientId,
+  createOrderInPaypal,
+  captureOrderInPaypal,
+  getStripePublishableKey,
 } = require("./orderController");
 
 const orderRouter = express.Router();
@@ -22,10 +26,29 @@ const orderRouter = express.Router();
 // All routes that come after this will be protected
 orderRouter.use(protectRoutes);
 
+orderRouter.post("/checkout-session", getCheckoutSession);
+
 // For Users Only
 orderRouter.get("/my-orders", restrictTo("user"), getMyOrders);
-orderRouter.patch("/:orderId/cancel", restrictTo("user"), cancelOrder);
-orderRouter.post("/", restrictTo("user"), createOrder);
+orderRouter.get("/paypal-client-id", restrictTo("user"), getPaypalClientId);
+orderRouter.get(
+  "/stripe-publishable-key",
+  restrictTo("user"),
+  getStripePublishableKey
+);
+orderRouter.post(
+  "/paypal/create-order",
+  restrictTo("user"),
+  createOrderInPaypal
+);
+orderRouter.patch(
+  "/:paypalOrderId/paypal/capture",
+  restrictTo("user"),
+  captureOrderInPaypal
+);
+
+orderRouter.patch("/:paypalOrderId/cancel", restrictTo("user"), cancelOrder);
+// orderRouter.post("/", restrictTo("user"), createOrder);
 
 orderRouter.get("/recent", restrictTo("admin"), getRecentOrders);
 orderRouter.get("/stats", restrictTo("admin"), getOrdersStats);

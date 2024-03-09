@@ -15,6 +15,7 @@ const reviewRouter = require("./routes/reviews/reviewRouter");
 const productRouter = require("./routes/products/productRouter");
 const globalErrorHandler = require("./controllers/errorController");
 const categoryRouter = require("./routes/categories/categoryRouter");
+const { webhookCheckout } = require("./routes/orders/orderController");
 
 const app = express();
 
@@ -34,6 +35,12 @@ const limiter = rateLimit({
   message: "Too many requests sent from this IP, please try again in an hour!",
 });
 app.use("/api", limiter);
+
+app.post(
+  "/webhook-checkout",
+  express.raw({ type: "application/json" }),
+  webhookCheckout
+);
 
 // Body parser
 app.use(express.json());

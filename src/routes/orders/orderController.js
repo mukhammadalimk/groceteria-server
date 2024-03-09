@@ -41,8 +41,8 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      success_url: `http://localhost:3000/orders/${order._id}?alert=successful`,
-      cancel_url: `http://localhost:3000/checkout?alert=cancelled`,
+      success_url: `https://groceteria-client.vercel.app/orders/${order._id}?alert=successful`,
+      cancel_url: `https://groceteria-client.vercel.app/checkout?alert=cancelled`,
       customer_email: req.user.email,
       client_reference_id: order._id,
       line_items: lineItems,

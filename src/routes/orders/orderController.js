@@ -103,7 +103,7 @@ const createBookingCheckout = async (session) => {
     user: userId,
     paymentMethod: "Stripe",
     deliveryFee: shippingFee,
-    address: user.addresses.find((i) => i._id === addressId),
+    address: user.addresses.find((i) => String(i._id) === addressId),
     notes: notes,
   };
 

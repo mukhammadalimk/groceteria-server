@@ -33,6 +33,7 @@ const corsOptions = {
     }
   },
   credentials: true, //access-control-allow-credentials:true,
+  exposedHeaders: ["Set-Cookie"],
 };
 app.use(cors(corsOptions));
 

@@ -71,7 +71,7 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
   }
 });
 
-const webhookCheckout = async (req, res, next) => {
+const webhookCheckout = (req, res, next) => {
   const signature = req.headers["stripe-signature"];
 
   let event;
@@ -86,7 +86,7 @@ const webhookCheckout = async (req, res, next) => {
   }
 
   if (event.type === "checkout.session.completed")
-    await updateBookingCheckout(event.data.object);
+    updateBookingCheckout(event.data.object);
   // else {
   //   cancelOrder(event.data.object);
   // }

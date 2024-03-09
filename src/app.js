@@ -19,9 +19,20 @@ const { webhookCheckout } = require("./routes/orders/orderController");
 
 const app = express();
 
+const allowedDomains = [
+  "https://groceteria-client.vercel.app",
+  "http://localhost:3000",
+];
+
 const corsOptions = {
-  origin: "https://groceteria-client.vercel.app",
-  credentials: true, //access-control-allow-credentials:true
+  origin: function (origin, callback) {
+    if (!origin || allowedDomains.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, new Error("Not allowed by cors"));
+    }
+  },
+  credentials: true, //access-control-allow-credentials:true,
 };
 app.use(cors(corsOptions));
 

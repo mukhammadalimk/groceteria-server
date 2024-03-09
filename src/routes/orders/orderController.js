@@ -18,9 +18,6 @@ const fetch = require("node-fetch");
 /// STRIPE INTEGRATION
 const getCheckoutSession = catchAsync(async (req, res, next) => {
   // 1. Get cart of the user
-  const order = await Order.create({ ...req.body, user: req.user._id });
-  // console.log(`${req.get("origin")}/orders`);
-  // console.log(`${req.get("origin")}/checkout?alert=cancelled`);
   const lineItems = req.body.orderedProducts.map((item) => {
     return {
       price_data: {
@@ -40,17 +37,17 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      success_url: `https://groceteria-client.vercel.app/orders/${order._id}?alert=successful`,
+      success_url: `https://groceteria-client.vercel.app/orders?alert=successful`,
       cancel_url: `https://groceteria-client.vercel.app/checkout?alert=cancelled`,
       customer_email: req.user.email,
-      client_reference_id: String(order._id),
+      client_reference_id: `${req.user._id}/-@&$^$&@-/${req.body.address._id}/-@&$^$&@-/${req.body.notes}`,
       line_items: lineItems,
       shipping_options: [
         {
           shipping_rate_data: {
             display_name: "Groceteria delivery",
             fixed_amount: {
-              amount: order.deliveryFee ? order.deliveryFee * 100 : 0,
+              amount: req.body.deliveryFee ? req.body.deliveryFee * 100 : 0,
               currency: "usd",
             },
             type: "fixed_amount",
@@ -65,8 +62,7 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
       session,
     });
   } catch (error) {
-    await Order.findByIdAndDelete(order._id);
-    return next(new ErrorClass("Failed to create stripe session", 400));
+    return next(new ErrorClass(error, 400));
   }
 });
 
@@ -85,33 +81,41 @@ const webhookCheckout = (req, res) => {
   }
 
   if (event.type === "checkout.session.completed") {
-    updateBookingCheckout(event.data.object);
+    createBookingCheckout(event.data.object);
   }
-  // else {
-  //   cancelOrder(event.data.object);
-  // }
 
   res.status(200).json({ received: true });
 };
 
-const updateBookingCheckout = async (session) => {
-  const order = await Order.findByIdAndUpdate(
-    session.client_reference_id,
-    {
-      status: "paid",
-      isPaid: true,
-    },
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+const createBookingCheckout = async (session) => {
+  const arr = session.client_reference_id.split("/-@&$^$&@-/");
+  const userId = arr[0];
+  const addressId = arr[1];
+  const notes = arr[2];
+  const cart = await Cart.findOne({ user: userId });
+  const user = await User.findById(userId);
 
-  await Cart.findOneAndDelete({
-    user: order.user,
+  const shippingFee = cart.totalPrice < 50 ? 5.0 : 0;
+  const total = cart.totalPrice + shippingFee;
+  const orderData = {
+    orderedProducts: cart.cartProducts,
+    totalPrice: total,
+    user: userId,
+    paymentMethod: "Stripe",
+    deliveryFee: shippingFee,
+    address: user.addresses.find((i) => i._id === addressId),
+    notes: notes,
+  };
+
+  const order = await Order.create({
+    ...orderData,
+    status: "paid",
+    isPaid: true,
   });
 
-  const user = await User.findById(order.user);
+  await Cart.findOneAndDelete({
+    user: userId,
+  });
 
   let orderedProductsIds = user.orderedProducts || [];
 

@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "start": "NODE_OPTIONS='--experimental-specifier-resolution=node' nodemon src/server.js",
+    "start": "nodemon src/server.js",
     "start:prod": "NODE_ENV=production nodemon src/server.js"
   },
   "author": "Muhammadali",

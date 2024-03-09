@@ -20,7 +20,7 @@ const { webhookCheckout } = require("./routes/orders/orderController");
 const app = express();
 
 const corsOptions = {
-  origin: "http://localhost:3000",
+  origin: "https://groceteria-client.vercel.app/",
   credentials: true, //access-control-allow-credentials:true
 };
 app.use(cors(corsOptions));

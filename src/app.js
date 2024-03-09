@@ -22,6 +22,7 @@ const app = express();
 const allowedDomains = [
   "https://groceteria-client.vercel.app",
   "http://localhost:3000",
+  "https://checkout.stripe.com",
 ];
 
 const corsOptions = {

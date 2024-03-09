@@ -10,7 +10,6 @@ const {
   PAYPAL_CLIENT_ID,
   PAYPAL_CLIENT_SECRET,
   STRIPE_WEBHOOK_SECRET,
-  STRIPE_SECRET_KEY,
   STRIPE_PUBLISHABLE_KEY,
 } = process.env;
 const fetch = require("node-fetch");
@@ -44,7 +43,7 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
       success_url: `https://groceteria-client.vercel.app/orders/${order._id}?alert=successful`,
       cancel_url: `https://groceteria-client.vercel.app/checkout?alert=cancelled`,
       customer_email: req.user.email,
-      client_reference_id: order._id,
+      client_reference_id: String(order._id),
       line_items: lineItems,
       shipping_options: [
         {
@@ -61,7 +60,7 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
     });
 
     // 3) Create session as response
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       session,
     });
@@ -71,7 +70,7 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
   }
 });
 
-const webhookCheckout = (req, res, next) => {
+const webhookCheckout = (req, res) => {
   const signature = req.headers["stripe-signature"];
 
   let event;
@@ -85,8 +84,9 @@ const webhookCheckout = (req, res, next) => {
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 
-  if (event.type === "checkout.session.completed")
+  if (event.type === "checkout.session.completed") {
     updateBookingCheckout(event.data.object);
+  }
   // else {
   //   cancelOrder(event.data.object);
   // }

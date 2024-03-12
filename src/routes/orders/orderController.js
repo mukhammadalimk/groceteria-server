@@ -338,7 +338,6 @@ const getMyOrders = catchAsync(async (req, res, next) => {
 
   return res.status(200).json({
     status: "success",
-    results: orders.length,
     data: orders,
   });
 });
@@ -347,7 +346,7 @@ const getOrder = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.orderId);
 
   if (!order) {
-    return next(new ErrorClass(`No order found with this id`, 404));
+    return next(new ErrorClass(`No order found with this id.`, 404));
   }
 
   return res.status(200).json({
@@ -449,13 +448,13 @@ const updateOrderToOnTheWay = catchAsync(async (req, res, next) => {
 const getOrdersStats = catchAsync(async (req, res, next) => {
   const orders = await Order.find();
 
+  if (!orders)
+    return next(new ErrorClass("No orders found to show the statistics", 404));
+
   const toBePacked = orders.filter((i) => i.status == "paid");
   const onTheWay = orders.filter((i) => i.status == "on the way");
   const delivered = orders.filter((i) => i.status == "delivered");
   const cancelled = orders.filter((i) => i.status == "cancelled");
-
-  if (!orders)
-    return next(new ErrorClass("No orders found for the query", 404));
 
   return res.status(200).json({
     status: "success",

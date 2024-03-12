@@ -7,9 +7,14 @@ const Product = require("../../models/productModel");
 const getAllCategories = catchAsync(async (req, res, next) => {
   const categories = await Category.find();
 
+  if (!categories) {
+    return next(
+      new ErrorClass(`Could not fetch categories. Please try again later.`, 400)
+    );
+  }
+
   return res.status(200).json({
     status: "success",
-    results: categories.length,
     data: categories,
   });
 });

@@ -24,7 +24,6 @@ const {
   getSaleProducts,
   getNewProducts,
   getProductsYouMayLike,
-  getCategoryProducts,
 } = require("./productController");
 
 const productRouter = express.Router();
@@ -36,7 +35,6 @@ const productRouter = express.Router();
 productRouter.use("/:productId/reviews", reviewRouter);
 
 // Most of these will not be needed. Need to update it
-productRouter.get("/category/:categoryId", getCategoryProducts);
 productRouter.get("/top-rated", getTopProducts);
 productRouter.get("/sale", getSaleProducts);
 productRouter.get("/new", getNewProducts);

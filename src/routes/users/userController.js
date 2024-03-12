@@ -22,15 +22,24 @@ const filterBody = (obj, ...alowedFields) => {
 const getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find().select("+status");
 
+  if (!users)
+    return next(new ErrorClass("Sorry, we couldn't find any users.", 404));
+
   res.status(200).json({
     status: "success",
-    results: users.length,
     data: users,
   });
 });
 
 const getCustomersStats = catchAsync(async (req, res, next) => {
-  const users = await User.find({ status: { $eq: "active" } });
+  // { status: { $eq: "active" } }
+  const users = await User.find();
+
+  if (users.length === 0) {
+    return next(
+      new ErrorClass("There are no users to show 'users statistics'.", 404)
+    );
+  }
 
   function convertToLocal(date) {
     return new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
@@ -94,7 +103,6 @@ const getUser = catchAsync(async (req, res, next) => {
 
   if (!user) return next(new ErrorClass(`No user found with that id`, 404));
 
-  user.refreshToken = undefined;
   res.status(200).json({
     status: "success",
     user,

@@ -223,22 +223,6 @@ const getProductsYouMayLike = catchAsync(async (req, res, next) => {
   });
 });
 
-// Get all products of category
-const getCategoryProducts = catchAsync(async (req, res, next) => {
-  const categoryProducts = await Product.find({
-    category: req.params.categoryId,
-  });
-
-  if (!categoryProducts || categoryProducts.length === 0)
-    return next(new ErrorClass("Error with getting category products", 404));
-
-  return res.status(200).json({
-    status: "success",
-    results: categoryProducts.length,
-    data: categoryProducts,
-  });
-});
-
 module.exports = {
   getAllProducts,
   deleteAllProducts,
@@ -251,5 +235,4 @@ module.exports = {
   getSaleProducts,
   getNewProducts,
   getProductsYouMayLike,
-  getCategoryProducts,
 };

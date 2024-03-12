@@ -3,7 +3,35 @@ const catchAsync = require("../utils/catchAsync");
 const ErrorClass = require("../utils/errorClass");
 const cloudinary = require("../utils/cloudinary");
 
+const validateCategory = (name, file, dontValidateFile) => {
+  const isNameValid = /^[a-zA-Z]+$/.test(name);
+  /// Category validation;
+  let errorText = "";
+
+  if (!dontValidateFile) {
+    if (name === "" && file) errorText = "enter a name.";
+    if (name && !isNameValid)
+      errorText = "enter a category name using only characters.";
+    if (!file && name && isNameValid) errorText = "upload an image.";
+    if (name === "" && !file) errorText = "enter required fields.";
+  }
+
+  if (dontValidateFile) {
+    if (name && !isNameValid)
+      errorText = "enter a category name using only characters.";
+    if (name === "") errorText = "enter a name.";
+  }
+
+  return errorText;
+};
+
 const updateCategoryImage = catchAsync(async (req, res, next) => {
+  const { name } = req.body;
+
+  const errorText = validateCategory(name, req.file, true);
+  if (errorText !== "")
+    return next(new ErrorClass(`Please, ${errorText}`, 400));
+
   if (!req.file) return next();
   // 1) Find the updating product
   const updatingCategory = await Category.findById(req.params.id);
@@ -33,9 +61,18 @@ const uploadCategoryImage = catchAsync(async (req, res, next) => {
   // 1) Check the validity of the creating category properties.
   const { name } = req.body;
 
-  if (!name || !req.file) {
-    return next(new ErrorClass("Please check properties of the category", 400));
-  }
+  const categories = await Category.find();
+
+  const nameExist = categories.find(
+    (i) => i.name.toLowerCase() === name.toLowerCase()
+  );
+
+  if (nameExist)
+    return next(new ErrorClass(`The category (${name}) already exists.`, 400));
+
+  const errorText = validateCategory(name, req.file, false);
+  if (errorText !== "")
+    return next(new ErrorClass(`Please, ${errorText}`, 400));
 
   // 2) Upload image to cloudinary
   let imageObj = {};

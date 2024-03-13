@@ -20,19 +20,23 @@ const getAllProducts = catchAsync(async (req, res, next) => {
     select: "name",
   });
 
+  if (!products) {
+    return next(
+      new ErrorClass(
+        `Sorry, we could not get products. Please, come back later or refresh the page.`,
+        400
+      )
+    );
+  }
+
+  for (let i = products.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [products[i], products[j]] = [products[j], products[i]];
+  }
+
   return res.status(200).json({
     status: "success",
-    results: products.length,
     data: products,
-  });
-});
-
-const deleteAllProducts = catchAsync(async (req, res, next) => {
-  await Product.deleteMany();
-
-  return res.status(204).json({
-    status: "success",
-    data: null,
   });
 });
 
@@ -152,74 +156,12 @@ const updateAllProducts = catchAsync(async (req, res, next) => {
   });
 });
 
-// Get high rated products
-const getTopProducts = catchAsync(async (req, res, next) => {
-  const topProducts = await Product.find()
-    .sort({ ratingsAverage: -1 })
-    .limit(10);
+const deleteAllProducts = catchAsync(async (req, res, next) => {
+  await Product.deleteMany();
 
-  return res.status(200).json({
+  return res.status(204).json({
     status: "success",
-    data: topProducts,
-  });
-});
-
-//TODO: Get products that has discountedPrice
-const getSaleProducts = catchAsync(async (req, res, next) => {
-  const discountedProducts = await Product.find({
-    discountPercent: { $gt: 0 },
-  });
-
-  if (discountedProducts.length === 0) {
-    return res.status(404).json({
-      message: "No sale products were found",
-    });
-  }
-
-  return res.status(200).json({
-    status: "success",
-    data: discountedProducts,
-  });
-});
-
-// Get products that were added in the last 7 days
-const getNewProducts = catchAsync(async (req, res, next) => {
-  const products = await Product.find();
-
-  const newProducts = products.filter((product) => {
-    return product.createdAt.getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
-  });
-
-  if (newProducts.length === 0) {
-    return res.status(404).json({
-      message: "No new products were found",
-    });
-  }
-
-  return res.status(200).json({
-    status: "success",
-    results: newProducts.length,
-    data: newProducts,
-  });
-});
-
-// Get products you may like
-const getProductsYouMayLike = catchAsync(async (req, res, next) => {
-  const productsYouMayLike = await Product.find({
-    category: req.body.categoryId,
-  })
-    .sort({ ratingsAverage: -1 })
-    .limit(5);
-
-  if (!productsYouMayLike || productsYouMayLike.length === 0)
-    return next(
-      new ErrorClass("Error with getting products you may like", 404)
-    );
-
-  return res.status(200).json({
-    status: "success",
-    results: productsYouMayLike.length,
-    data: productsYouMayLike,
+    data: null,
   });
 });
 
@@ -231,8 +173,4 @@ module.exports = {
   createProduct,
   updateProduct,
   updateAllProducts,
-  getTopProducts,
-  getSaleProducts,
-  getNewProducts,
-  getProductsYouMayLike,
 };

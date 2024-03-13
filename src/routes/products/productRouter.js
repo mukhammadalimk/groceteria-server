@@ -20,10 +20,6 @@ const {
   getAllProducts,
   updateAllProducts,
   deleteAllProducts,
-  getTopProducts,
-  getSaleProducts,
-  getNewProducts,
-  getProductsYouMayLike,
 } = require("./productController");
 
 const productRouter = express.Router();
@@ -33,12 +29,6 @@ const productRouter = express.Router();
 
 // This is for creating a review on a tour without manually passing tour and user ids
 productRouter.use("/:productId/reviews", reviewRouter);
-
-// Most of these will not be needed. Need to update it
-productRouter.get("/top-rated", getTopProducts);
-productRouter.get("/sale", getSaleProducts);
-productRouter.get("/new", getNewProducts);
-productRouter.get("/you-may-like", getProductsYouMayLike);
 
 productRouter
   .route("/")

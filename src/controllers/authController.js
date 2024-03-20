@@ -18,8 +18,8 @@ const createSendToken = (user, req, res) => {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOnly: true, // this ensures that cookie can not be modifed by the browser,
-    sameSite: "none",
+    // httpOnly: true, // this ensures that cookie can not be modifed by the browser,
+    // sameSite: "none",
     secure: req.secure || req.headers["x-forwarded-proto"] === "https",
   };
   // if (process.env.NODE_ENV === "production") cookieOptions.secure = true;

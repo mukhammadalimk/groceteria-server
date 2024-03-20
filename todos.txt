@@ -6,3 +6,4 @@
 - Think about how to make wishlist products being able to be added only once with index 
 - Think about tracking how many times a product is sold 
 - Think about uploading images to mongodb directly
+- made changing email with email(token)

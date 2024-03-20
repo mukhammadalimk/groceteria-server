@@ -1,20 +1,15 @@
 const catchAsync = require("../utils/catchAsync");
 const ErrorClass = require("../utils/errorClass");
 
-const getCompareOrWishList = (Modal, type) =>
+const getCompareOrWishList = (User, type) =>
   catchAsync(async (req, res, next) => {
-    const user = await Modal.findById(req.user._id).populate({
-      path: type,
-    });
+    const user = await User.findById(req.user._id).populate(type);
 
     if (!user)
       return next(new ErrorClass("Could not find user with that id", 404));
 
-    const listType = type === "compare" ? user.compare : user.wishlisted;
-
     return res.status(200).json({
       status: "success",
-      results: listType.length,
       data: type === "compare" ? user.compare : user.wishlisted,
     });
   });
@@ -44,20 +39,15 @@ const addToCompareOrWishlist = (User, Product, type) =>
     }
 
     listType.push(product._id);
-    const updatedUser = await user.save({ validateBeforeSave: false });
-    updatedUser.refreshToken = undefined;
-
-    return res.status(200).json({
-      status: "success",
-      data: updatedUser,
-    });
+    await user.save({ validateBeforeSave: false });
+    return res.status(200).json({ status: "success" });
   });
 
 const removeFromCompareOrWishlist = (User, Product, type) =>
   catchAsync(async (req, res, next) => {
     const product = await Product.findById(req.body.productId);
 
-    if (product === null)
+    if (!product)
       return next(new ErrorClass("Could not find wanted product", 404));
 
     const user = await User.findById(req.user._id);
@@ -79,13 +69,9 @@ const removeFromCompareOrWishlist = (User, Product, type) =>
     }
 
     listType.splice(removingProductIndex, 1);
-    const updatedUser = await user.save({ validateBeforeSave: false });
-    updatedUser.refreshToken = undefined;
+    await user.save({ validateBeforeSave: false });
 
-    return res.status(200).json({
-      status: "success",
-      data: updatedUser,
-    });
+    return res.status(200).json({ status: "success" });
   });
 
 module.exports = {

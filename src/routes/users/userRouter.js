@@ -11,7 +11,6 @@ const {
   verify,
   sendVerificationCodeAgain,
   checkResetTokenExist,
-  getRefreshToken,
 } = require("../../controllers/authController");
 const { multerUserPhoto } = require("../../middlewares/commonMiddlewares");
 const { uploadUserPhoto } = require("../../middlewares/userMiddlewares");
@@ -40,7 +39,6 @@ userRouter.use("/:userId/reviews", reviewRouter);
 // Authentication
 userRouter.post("/signup", signup);
 userRouter.post("/login", login);
-userRouter.get("/refresh", getRefreshToken);
 userRouter.get("/logout", protectRoutes, logout);
 userRouter.post("/verify", verify);
 userRouter.post("/send-code-again", sendVerificationCodeAgain);
@@ -73,13 +71,13 @@ userRouter.get("/:userId", restrictTo("admin"), getUser);
 userRouter.get("/stats/customers", restrictTo("admin"), getCustomersStats);
 
 // WISHLIST ROUTES
-userRouter.get("/wishlist", getWishlist);
-userRouter.patch("/wishlist/add", addToWishlist);
-userRouter.patch("/wishlist/remove", removeFromWishlist);
+userRouter.get("/me/wishlisted", getWishlist);
+userRouter.patch("/me/wishlisted/add", addToWishlist);
+userRouter.patch("/me/wishlisted/remove", removeFromWishlist);
 
 // COMPARE ROUTES
-userRouter.get("/compare", getCompare);
-userRouter.patch("/compare/add", addToCompare);
-userRouter.patch("/compare/remove", removeFromCompare);
+userRouter.get("/me/compare", getCompare);
+userRouter.patch("/me/compare/add", addToCompare);
+userRouter.patch("/me/compare/remove", removeFromCompare);
 
 module.exports = userRouter;

@@ -4,7 +4,7 @@ const ErrorClass = require("../utils/errorClass");
 const cloudinary = require("../utils/cloudinary");
 
 const validateCategory = (name, file, dontValidateFile) => {
-  const isNameValid = /^[a-zA-Z]+$/.test(name);
+  const isNameValid = /^[a-zA-Z ]+$/.test(name);
   /// Category validation;
   let errorText = "";
 

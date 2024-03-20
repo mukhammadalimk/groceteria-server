@@ -9,8 +9,7 @@ const getMyCart = catchAsync(async (req, res, next) => {
 
   return res.status(200).json({
     status: "success",
-    results: userCart ? userCart.cartProducts.length : 0,
-    data: userCart || null,
+    data: userCart,
   });
 });
 

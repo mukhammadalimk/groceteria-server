@@ -9,7 +9,7 @@ require("dotenv").config();
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const createSendToken = async (user, res) => {
+const createSendToken = async (user, req, res) => {
   const accessToken = jwt.sign(
     { id: user._id },
     process.env.ACCESS_TOKEN_SECRET,
@@ -30,9 +30,9 @@ const createSendToken = async (user, res) => {
     ),
     httpOnly: false, // this ensures that cookie can not be modifed by the browser,
     sameSite: "none",
-    // secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    secure: req.secure || req.headers["x-forwarded-proto"] === "https",
   };
-  if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
+  // if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
 
   res.cookie("jwt", refreshToken, cookieOptions);
 
@@ -175,7 +175,7 @@ const login = catchAsync(async (req, res, next) => {
     }
 
     // If everything is okay, send token and log user in
-    createSendToken(user, res);
+    createSendToken(user, req, res);
     return;
   }
 
@@ -236,7 +236,7 @@ const login = catchAsync(async (req, res, next) => {
   }
 
   // 3. If everything is okay, send token and log user in
-  createSendToken(user, res);
+  createSendToken(user, req, res);
 });
 
 const signup = catchAsync(async (req, res, next) => {
@@ -338,7 +338,7 @@ const verify = catchAsync(async (req, res, next) => {
   user.verificationCodeExpires = undefined;
   user.status = "active";
   await user.save({ validateBeforeSave: false });
-  createSendToken(user, res);
+  createSendToken(user, req, res);
 });
 
 const logout = catchAsync(async (req, res, next) => {
@@ -462,7 +462,7 @@ const resetPassword = catchAsync(async (req, res, next) => {
   // This logic is implemented in userModel with middleware
 
   // 4) Log the user in
-  createSendToken(user, res);
+  createSendToken(user, req, res);
 });
 
 const updateMyPassword = catchAsync(async (req, res, next) => {
@@ -492,7 +492,7 @@ const updateMyPassword = catchAsync(async (req, res, next) => {
   await user.save();
 
   // 4) Log user in, send JWT
-  createSendToken(user, res);
+  createSendToken(user, req, res);
 });
 
 const checkResetTokenExist = catchAsync(async (req, res, next) => {

@@ -9,28 +9,39 @@ require("dotenv").config();
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const createSendToken = (user, req, res) => {
-  const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_TOKEN_SECRET, {
-    expiresIn: "60 days",
-  });
+const createSendToken = async (user, req, res) => {
+  const accessToken = jwt.sign(
+    { id: user._id },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "5 days" }
+  );
+
+  const refreshToken = jwt.sign(
+    { id: user._id },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: "60 days" }
+  );
+
+  await User.findByIdAndUpdate(user._id, { refreshToken });
 
   const cookieOptions = {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    // httpOnly: true, // this ensures that cookie can not be modifed by the browser,
-    // sameSite: "none",
-    // secure: req.secure || req.headers["x-forwarded-proto"] === "https",
+    httpOnly: true, // this ensures that cookie can not be modifed by the browser,
+    sameSite: "none",
+    secure: req.secure || req.headers["x-forwarded-proto"] === "https",
   };
-  // if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
 
-  res.cookie("jwt", jwtToken, cookieOptions);
+  res.cookie("jwt", refreshToken, cookieOptions);
 
-  // Remove password from output
+  // Remove password and refreshToken from output
   user.password = undefined;
+  user.refreshToken = undefined;
 
   return res.status(200).json({
     status: "success",
+    accessToken,
     user,
   });
 };
@@ -48,24 +59,24 @@ const sendingEmailError = async (user) => {
 
 const protectRoutes = catchAsync(async (req, res, next) => {
   // 1) Get token and check if it exists
-  let token;
+  let accessToken;
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
-    token = req.headers.authorization.split(" ")[1];
+    accessToken = req.headers.authorization.split(" ")[1];
   }
 
-  if (!token) {
+  if (!accessToken) {
     return next(
       new ErrorClass(`You are not logged in. Please log in to get access`, 401)
     );
   }
 
-  // 2) token verification
+  // 2) accessToken verification
   const decoded = await promisify(jwt.verify)(
-    token,
-    process.env.JWT_TOKEN_SECRET
+    accessToken,
+    process.env.ACCESS_TOKEN_SECRET
   );
 
   // 3) Check if user still exists
@@ -89,6 +100,44 @@ const protectRoutes = catchAsync(async (req, res, next) => {
   // Allow access
   req.user = loggingUser;
   next();
+});
+
+const getRefreshToken = catchAsync(async (req, res, next) => {
+  // 1) Get JWT from the cookies
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(401);
+
+  const refreshToken = cookies.jwt;
+
+  // 3) Check if user still exists
+  const loggingUser = await User.findOne({ refreshToken });
+
+  if (!loggingUser)
+    return next(
+      new ErrorClass(`The user belonging to the token no longer exists`, 401)
+    );
+
+  // 4) Evaluate JWT
+  const decoded = await promisify(jwt.verify)(
+    refreshToken,
+    process.env.REFRESH_TOKEN_SECRET
+  );
+
+  if (decoded.id != loggingUser._id)
+    return next(
+      new ErrorClass(`The refresh token does not belong to the user`, 403)
+    );
+
+  const accessToken = jwt.sign(
+    { id: loggingUser._id },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "5 days" }
+  );
+
+  return res.status(200).json({
+    status: "success",
+    accessToken,
+  });
 });
 
 const login = catchAsync(async (req, res, next) => {
@@ -292,12 +341,31 @@ const verify = catchAsync(async (req, res, next) => {
 });
 
 const logout = catchAsync(async (req, res, next) => {
-  res.clearCookie("jwt", {
+  // 1) Get JWT from the cookies
+
+  const cookies = req.cookies;
+  if (!cookies?.jwt) return res.sendStatus(204); // No content
+
+  const refreshToken = cookies.jwt;
+
+  const loggingOutUser = await User.findOne({ refreshToken });
+
+  const cookieOptions = {
     expires: new Date(Date.now() + 10),
     httpOnly: true,
-  });
+  };
 
-  return res.status(200).json({ status: "success" });
+  if (!loggingOutUser) {
+    res.clearCookie("jwt", cookieOptions);
+    return res.sendStatus(204); // No content
+  }
+
+  // Delete refreshToken from the database
+  await User.updateOne({ refreshToken }, { $unset: { refreshToken: "" } });
+
+  res.clearCookie("jwt", cookieOptions);
+
+  return res.sendStatus(204); // No content
 });
 
 const restrictTo = (...roles) => {
@@ -459,4 +527,5 @@ module.exports = {
   updateMyPassword,
   sendVerificationCodeAgain,
   checkResetTokenExist,
+  getRefreshToken,
 };

@@ -28,9 +28,9 @@ const createSendToken = async (user, req, res) => {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
-    httpOnly: false, // this ensures that cookie can not be modifed by the browser,
-    sameSite: "none",
-    secure: req.secure || req.headers["x-forwarded-proto"] === "https",
+    // httpOnly: false, // this ensures that cookie can not be modifed by the browser,
+    // sameSite: "none",
+    // secure: req.secure || req.headers["x-forwarded-proto"] === "https",
   };
   // if (process.env.NODE_ENV === "production") cookieOptions.secure = true;
 
@@ -70,22 +70,32 @@ const protectRoutes = catchAsync(async (req, res, next) => {
 
   if (!accessToken) {
     return next(
-      new ErrorClass(`You are not logged in. Please log in to get access`, 401)
+      new ErrorClass(
+        `TokenError: You are not logged in. Please log in to get access.`,
+        401
+      )
     );
   }
 
   // 2) accessToken verification
+  await promisify(jwt.verify)(accessToken, process.env.ACCESS_TOKEN_SECRET);
+
+  const refreshToken = req.cookies.jwt;
+
   const decoded = await promisify(jwt.verify)(
-    accessToken,
-    process.env.ACCESS_TOKEN_SECRET
+    refreshToken,
+    process.env.REFRESH_TOKEN_SECRET
   );
 
   // 3) Check if user still exists
-  const loggingUser = await User.findById(decoded.id);
+  const loggingUser = await User.findOne({ refreshToken });
 
   if (!loggingUser)
     return next(
-      new ErrorClass(`The user belonging to the token no longer exists`, 401)
+      new ErrorClass(
+        `TokenError: The user belonging to the token no longer exists`,
+        401
+      )
     );
 
   // 4) Check if user changed password after jwt token was issued
@@ -103,31 +113,33 @@ const protectRoutes = catchAsync(async (req, res, next) => {
   next();
 });
 
-const getRefreshToken = catchAsync(async (req, res, next) => {
+const getNewAccessToken = catchAsync(async (req, res, next) => {
   // 1) Get JWT from the cookies
   const cookies = req.cookies;
-  if (!cookies?.jwt) return res.sendStatus(401);
-
   const refreshToken = cookies.jwt;
+
+  if (!refreshToken) {
+    return next(
+      new ErrorClass(
+        `TokenError: You are not loggin in! Please log in to get access.`,
+        401
+      )
+    );
+  }
 
   // 3) Check if user still exists
   const loggingUser = await User.findOne({ refreshToken });
 
   if (!loggingUser)
     return next(
-      new ErrorClass(`The user belonging to the token no longer exists`, 401)
+      new ErrorClass(
+        `TokenError: The user belonging to the token no longer exists`,
+        401
+      )
     );
 
   // 4) Evaluate JWT
-  const decoded = await promisify(jwt.verify)(
-    refreshToken,
-    process.env.REFRESH_TOKEN_SECRET
-  );
-
-  if (decoded.id != loggingUser._id)
-    return next(
-      new ErrorClass(`The refresh token does not belong to the user`, 403)
-    );
+  await promisify(jwt.verify)(refreshToken, process.env.REFRESH_TOKEN_SECRET);
 
   const accessToken = jwt.sign(
     { id: loggingUser._id },
@@ -320,7 +332,7 @@ const verify = catchAsync(async (req, res, next) => {
   // 1. Get user based on verification code
   const { verificationCode } = req.body;
   let user = await User.findOne({ verificationCode }).select(
-    " -createdAt -updatedAt -__v -passwordChangedAt"
+    "-createdAt -updatedAt -__v -passwordChangedAt"
   );
 
   // 2. If verification code expired or verification code is invalid, send error
@@ -528,5 +540,5 @@ module.exports = {
   updateMyPassword,
   sendVerificationCodeAgain,
   checkResetTokenExist,
-  getRefreshToken,
+  getNewAccessToken,
 };

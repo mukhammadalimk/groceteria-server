@@ -92,7 +92,7 @@ exports.deleteReview = catchAsync(async (req, res, next) => {
   const deletedReview = await Review.findByIdAndDelete(req.params.reviewId);
 
   if (!deletedReview) {
-    return next(new AppError("No review found with that ID", 404));
+    return next(new ErrorClass("No review found with that ID", 404));
   }
 
   const product = await Product.findById(review.product).populate("category");

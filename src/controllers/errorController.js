@@ -20,7 +20,7 @@ const handleValidationError = (err) => {
 };
 
 const handleJWTError = (err) => {
-  return new ErrorClass(`Invalid token. Please log in again!`, 401);
+  return new ErrorClass(`TokenError: Invalid token. Please log in again!`, 401);
 };
 
 const handleJWTExpireError = (err) =>

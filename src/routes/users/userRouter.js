@@ -11,7 +11,7 @@ const {
   verify,
   sendVerificationCodeAgain,
   checkResetTokenExist,
-  getRefreshToken,
+  getNewAccessToken,
 } = require("../../controllers/authController");
 const { multerUserPhoto } = require("../../middlewares/commonMiddlewares");
 const { uploadUserPhoto } = require("../../middlewares/userMiddlewares");
@@ -40,7 +40,7 @@ userRouter.use("/:userId/reviews", reviewRouter);
 // Authentication
 userRouter.post("/signup", signup);
 userRouter.post("/login", login);
-userRouter.get("/refresh", getRefreshToken);
+userRouter.get("/new-access-token", getNewAccessToken);
 userRouter.get("/logout", protectRoutes, logout);
 userRouter.post("/verify", verify);
 userRouter.post("/send-code-again", sendVerificationCodeAgain);

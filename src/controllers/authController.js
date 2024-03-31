@@ -169,7 +169,7 @@ const login = catchAsync(async (req, res, next) => {
     const { email } = ticket.getPayload();
 
     user = await User.findOne({ email }).select(
-      "+status -createdAt -updatedAt -__v -passwordChangedAt"
+      "-createdAt -updatedAt -__v -passwordChangedAt"
     );
 
     if (!user) {
@@ -196,11 +196,11 @@ const login = catchAsync(async (req, res, next) => {
   if (!req.query.token) {
     if (email)
       user = await User.findOne({ email }).select(
-        "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+        "+password -createdAt -updatedAt -__v -passwordChangedAt"
       );
     if (username)
       user = await User.findOne({ username }).select(
-        "+password +status -createdAt -updatedAt -__v -passwordChangedAt"
+        "+password -createdAt -updatedAt -__v -passwordChangedAt"
       );
 
     if (

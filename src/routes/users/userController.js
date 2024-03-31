@@ -20,7 +20,7 @@ const filterBody = (obj, ...alowedFields) => {
 
 // Thise are for admin
 const getAllUsers = catchAsync(async (req, res, next) => {
-  const users = await User.find().select("+status");
+  const users = await User.find();
 
   res.status(200).json({
     status: "success",
@@ -153,14 +153,14 @@ const updateMe = catchAsync(async (req, res, next) => {
       new: true,
       runValidators: true,
     }).select(
-      "+status -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+      "-createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
     );
   } else {
     user = await User.findByIdAndUpdate(req.user.id, filteredBody, {
       new: true,
       runValidators: true,
     }).select(
-      "+status -createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
+      "-createdAt -updatedAt -__v -passwordChangedAt -resetToken -resetTokenExpires"
     );
   }
 

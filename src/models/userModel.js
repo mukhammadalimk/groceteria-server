@@ -61,22 +61,10 @@ const userSchema = new mongoose.Schema(
     },
     // This is how we embed addresses into users
     addresses: [helperModal.addressObj],
-    cardInfo: {
-      cardNumber: {
-        type: Number,
-        minlength: 16,
-        maxlength: 16,
-        required: [false, "Please provide receiver's credit card number"],
-      },
-      expirationMonth: { type: Number, required: false, min: 2, max: 2 },
-      expirationYear: { type: Number, required: false, min: 4, max: 4 },
-      cvcCode: { type: Number, required: false, min: 3, max: 3 },
-    },
     status: {
       type: String,
       enum: ["pending", "active", "inactive"],
       default: "pending",
-      select: false,
     },
     phoneNumber: { type: String },
     verificationCode: Number,

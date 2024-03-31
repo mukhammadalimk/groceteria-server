@@ -57,7 +57,7 @@ reviewSchema.pre(/^find/, function (next) {
   });
   this.populate({
     path: "replies.user",
-    select: "name photo username",
+    select: "name photo username role",
   });
   next();
 });

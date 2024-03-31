@@ -25,23 +25,23 @@ categoryRouter
   .get(getAllCategories)
   .post(
     protectRoutes,
-    restrictTo("admin"),
+    restrictTo("admin", "manager"),
     multerCategoryImage,
     uploadCategoryImage,
     createCategory
   )
-  .delete(protectRoutes, restrictTo("admin"), deleteAllCategories);
+  .delete(protectRoutes, restrictTo("admin", "manager"), deleteAllCategories);
 
 categoryRouter
   .route("/:id")
   .patch(
     protectRoutes,
-    restrictTo("admin"),
+    restrictTo("admin", "manager"),
     multerCategoryImage,
     updateCategoryImage,
     updateCategory
   )
-  .delete(protectRoutes, restrictTo("admin"), deleteCategory)
+  .delete(protectRoutes, restrictTo("admin", "manager"), deleteCategory)
   .get(getCategory);
 
 module.exports = categoryRouter;

@@ -3,7 +3,7 @@ const slugify = require("slugify");
 
 const categorySchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, unique: true },
+    name: { type: String, required: true, unique: true, trim: true },
     image: {
       imageUrl: { type: String, required: true },
       cloudinaryId: { type: String, required: true },

@@ -22,9 +22,6 @@ const filterBody = (obj, ...alowedFields) => {
 const getAllUsers = catchAsync(async (req, res, next) => {
   const users = await User.find().select("+status");
 
-  if (!users)
-    return next(new ErrorClass("Sorry, we couldn't find any users.", 404));
-
   res.status(200).json({
     status: "success",
     data: users,
@@ -73,15 +70,15 @@ const getCustomersStats = catchAsync(async (req, res, next) => {
   });
 });
 
-const makeUserAdmin = catchAsync(async (req, res, next) => {
+const makeUserManager = catchAsync(async (req, res, next) => {
   const userRole = req.body.role;
 
-  if (userRole === undefined || req.body.userId === undefined) {
-    return next(new ErrorClass("Please include required properties", 404));
+  if (userRole === undefined || req.params.userId === undefined) {
+    return next(new ErrorClass("Please include required properties", 400));
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.body.userId,
+  await User.findByIdAndUpdate(
+    req.params.userId,
     { role: userRole },
     {
       new: true,
@@ -89,10 +86,7 @@ const makeUserAdmin = catchAsync(async (req, res, next) => {
     }
   );
 
-  res.status(200).json({
-    status: "success",
-    data: user,
-  });
+  res.status(200).json({ status: "success" });
 });
 
 // These are for users
@@ -235,7 +229,7 @@ module.exports = {
   getUser,
   updateMe,
   deleteMe,
-  makeUserAdmin,
+  makeUserManager,
   getMe,
   addToWishlist,
   addToCompare,

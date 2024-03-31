@@ -26,7 +26,7 @@ newsRouter.route("/:newsId").get(getNews);
 
 // All routes will be restricted to users after this
 newsRouter.use(protectRoutes);
-newsRouter.use(restrictTo("admin"));
+newsRouter.use(restrictTo("admin", "manager"));
 newsRouter
   .route("/")
   .post(multerProductOrNewsImages, uploadNewsImages, createNews);

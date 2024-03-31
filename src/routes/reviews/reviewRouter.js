@@ -16,10 +16,9 @@ const {
 
 const reviewRouter = express.Router({ mergeParams: true });
 
-// All routes that come after this will be protected
-
 reviewRouter.get("/", getAllReviews);
 
+// All routes that come after this will be protected
 reviewRouter.use(protectRoutes);
 
 reviewRouter.post("/", restrictTo("user"), createReview);

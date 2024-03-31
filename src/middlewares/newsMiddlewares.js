@@ -8,7 +8,7 @@ const uploadNewsImages = catchAsync(async (req, res, next) => {
   // 1) Check the validity of the creating news properties.
   const { title, text } = req.body;
 
-  if (!title || !text || !req.files) {
+  if (!title || !text || req.files.length === 0) {
     return next(new ErrorClass("Please check properties of the news", 400));
   }
 

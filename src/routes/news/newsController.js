@@ -15,7 +15,6 @@ const getAllNews = catchAsync(async (req, res, next) => {
 
   return res.status(200).json({
     status: "success",
-    results: news.length,
     data: news.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
   });
 });
@@ -51,10 +50,7 @@ const deleteNews = catchAsync(async (req, res, next) => {
     return next(new ErrorClass(err, 400));
   }
 
-  return res.status(204).json({
-    status: "success",
-    data: null,
-  });
+  return res.status(204).json({ status: "success" });
 });
 
 const createNews = catchAsync(async (req, res, next) => {

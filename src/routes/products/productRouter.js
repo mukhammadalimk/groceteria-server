@@ -35,26 +35,26 @@ productRouter
   .get(getAllProducts)
   .post(
     protectRoutes,
-    restrictTo("admin"),
+    restrictTo("admin", "manager"),
     multerProductOrNewsImages,
     validateProductProperties,
     uploadProductImages,
     createProduct
   )
-  .patch(protectRoutes, restrictTo("admin"), updateAllProducts)
-  .delete(protectRoutes, restrictTo("admin"), deleteAllProducts);
+  .patch(protectRoutes, restrictTo("admin", "manager"), updateAllProducts)
+  .delete(protectRoutes, restrictTo("admin", "manager"), deleteAllProducts);
 
 productRouter
   .route("/:productId")
   .patch(
     protectRoutes,
-    restrictTo("admin"),
+    restrictTo("admin", "manager"),
     multerProductOrNewsImages,
     validateProductProperties,
     updateProductImages,
     updateProduct
   )
-  .delete(protectRoutes, restrictTo("admin"), deleteProduct)
+  .delete(protectRoutes, restrictTo("admin", "manager"), deleteProduct)
   .get(getProduct);
 
 module.exports = productRouter;

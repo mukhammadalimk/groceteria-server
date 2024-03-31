@@ -50,15 +50,19 @@ orderRouter.patch(
 orderRouter.patch("/:paypalOrderId/cancel", restrictTo("user"), cancelOrder);
 // orderRouter.post("/", restrictTo("user"), createOrder);
 
-orderRouter.get("/recent", restrictTo("admin"), getRecentOrders);
-orderRouter.get("/stats", restrictTo("admin"), getOrdersStats);
-orderRouter.get("/revenue-stats", restrictTo("admin"), getOrdersRevenueStats);
+orderRouter.get("/recent", restrictTo("admin", "manager"), getRecentOrders);
+orderRouter.get("/stats", restrictTo("admin", "manager"), getOrdersStats);
+orderRouter.get(
+  "/revenue-stats",
+  restrictTo("admin", "manager"),
+  getOrdersRevenueStats
+);
 
 /// General routes
 orderRouter.get("/:orderId", getOrder);
 
 // For Admin Only
-orderRouter.use(restrictTo("admin"));
+orderRouter.use(restrictTo("admin", "manager"));
 orderRouter.get("/", getAllOrders);
 orderRouter.patch("/:orderId/on-the-way", updateOrderToOnTheWay);
 orderRouter.patch("/:orderId/delivered", updateOrderToDelivered);

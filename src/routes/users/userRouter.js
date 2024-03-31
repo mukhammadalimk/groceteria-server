@@ -21,7 +21,7 @@ const {
   getAllUsers,
   getUser,
   updateMe,
-  makeUserAdmin,
+  makeUserManager,
   deleteMe,
   getMe,
   getWishlist,
@@ -58,10 +58,12 @@ userRouter.patch(
 );
 
 // THIS IS FOR ADMIN
-userRouter.route("/").get(protectRoutes, restrictTo("admin"), getAllUsers);
 userRouter
-  .route("/update-to-admin")
-  .patch(protectRoutes, restrictTo("admin"), makeUserAdmin);
+  .route("/")
+  .get(protectRoutes, restrictTo("admin", "manager"), getAllUsers);
+userRouter
+  .route("/:userId/update-to-manager")
+  .patch(protectRoutes, restrictTo("admin", "manager"), makeUserManager);
 
 // Protect and restrict routes
 userRouter.use(protectRoutes);
@@ -69,8 +71,12 @@ userRouter.use(protectRoutes);
 userRouter.delete("/deleteMe", deleteMe);
 userRouter.get("/me", getMe, getUser);
 
-userRouter.get("/:userId", restrictTo("admin"), getUser);
-userRouter.get("/stats/customers", restrictTo("admin"), getCustomersStats);
+userRouter.get("/:userId", restrictTo("admin", "manager"), getUser);
+userRouter.get(
+  "/stats/customers",
+  restrictTo("admin", "manager"),
+  getCustomersStats
+);
 
 // WISHLIST ROUTES
 userRouter.get("/me/wishlisted", getWishlist);

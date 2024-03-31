@@ -281,28 +281,6 @@ const captureOrderInPaypal = async (req, res) => {
   }
 };
 
-////////////////////////////////////////////////
-
-// This routes are for users
-// const createOrderCheckout = catchAsync(async (req, res, next) => {
-//   const order = await Order.create({ ...req.body, user: req.user.id });
-
-//   const user = await User.findById(req.user.id);
-
-//   let orderedProductsIds = user.orderedProducts || [];
-
-//   req.body.orderedProducts.forEach((i) => orderedProductsIds.push(i.productId));
-//   const uniqueArray = new Set(orderedProductsIds.map((i) => i.toString()));
-
-//   user.orderedProducts = [...uniqueArray];
-//   await user.save({ validateBeforeSave: false });
-
-//   return res.status(201).json({
-//     status: "success",
-//     data: order,
-//   });
-// });
-
 const cancelOrder = catchAsync(async (req, res, next) => {
   const order = await Order.findOneAndUpdate(
     { paypalOrderId: req.params.paypalOrderId },

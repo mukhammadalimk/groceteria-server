@@ -431,8 +431,8 @@ const forgotPassword = catchAsync(async (req, res, next) => {
 
     return next(
       new ErrorClass(
-        `Error occured with send email! Please try again later.`,
-        404
+        `Error occured with sending email. Please try again later.`,
+        400
       )
     );
   }

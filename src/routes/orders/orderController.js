@@ -76,23 +76,23 @@ const webhookCheckout = (req, res) => {
       signature,
       STRIPE_WEBHOOK_SECRET
     );
+
+    hellow(event.type);
   } catch (err) {
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
-
-  const hellow = async () => {
-    await Order.findByIdAndUpdate("66092bfd26b33d2570efd729", {
-      notes: event.type + "test",
-    });
-  };
-
-  hellow();
 
   if (event.type === "checkout.session.completed") {
     createBookingCheckout(event.data.object);
   }
 
   res.status(200).json({ received: true });
+};
+
+const hellow = async (type) => {
+  await Order.findByIdAndUpdate("65d88832571f765ee488d992", {
+    notes: type,
+  });
 };
 
 const createBookingCheckout = async (session) => {

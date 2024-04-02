@@ -82,7 +82,7 @@ const webhookCheckout = (req, res) => {
 
   const hellow = async () => {
     await Order.findByIdAndUpdate("66092bfd26b33d2570efd729", {
-      notes: event.type + "",
+      notes: event.type + "test",
     });
   };
 

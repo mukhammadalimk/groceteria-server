@@ -20,7 +20,8 @@ const { webhookCheckout } = require("./routes/orders/orderController");
 const app = express();
 
 const allowedDomains = [
-  "https://groceteria-client.vercel.app",
+  "https://groceteria-mk.vercel.app",
+  "https://www.groceteria.dev",
   "http://localhost:3000",
   "https://checkout.stripe.com",
 ];

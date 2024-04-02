@@ -80,6 +80,14 @@ const webhookCheckout = (req, res) => {
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 
+  const hellow = async () => {
+    await Order.findByIdAndUpdate("66092bfd26b33d2570efd729", {
+      notes: event.type,
+    });
+  };
+
+  hellow();
+
   if (event.type === "checkout.session.completed") {
     createBookingCheckout(event.data.object);
   }

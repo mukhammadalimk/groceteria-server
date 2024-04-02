@@ -38,7 +38,7 @@ const getCheckoutSession = catchAsync(async (req, res, next) => {
       payment_method_types: ["card"],
       mode: "payment",
       success_url: `https://groceteria-client.vercel.app/orders?alert=successful`,
-      cancel_url: `https://groceteria-client.vercel.app/checkout?alert=cancelled`,
+      cancel_url: `https://groceteria-client.vercel.app/checkout`,
       customer_email: req.user.email,
       client_reference_id: `${req.user._id}/-@&$^$&@-/${req.body.address._id}/-@&$^$&@-/${req.body.notes}`,
       line_items: lineItems,
@@ -76,8 +76,6 @@ const webhookCheckout = (req, res) => {
       signature,
       STRIPE_WEBHOOK_SECRET
     );
-
-    hellow(event.type);
   } catch (err) {
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
@@ -87,12 +85,6 @@ const webhookCheckout = (req, res) => {
   }
 
   res.status(200).json({ received: true });
-};
-
-const hellow = async (type) => {
-  await Order.findByIdAndUpdate("65d88832571f765ee488d992", {
-    notes: type,
-  });
 };
 
 const createBookingCheckout = async (session) => {

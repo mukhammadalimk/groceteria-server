@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const catchAsync = require("../utils/catchAsync");
 const ErrorClass = require("../utils/errorClass");
-const sendEmail = require("../utils/email");
+const { sendEmail, sendWelcomeEmail } = require("../utils/email");
 require("dotenv").config();
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -221,7 +221,7 @@ const login = catchAsync(async (req, res, next) => {
       user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
       await user.save({ validateBeforeSave: false });
 
-      const message = `Your account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
+      const message = `Your account is in pending mode. Your verification code is ${randomNumber}. Please enter this code make your account active`;
       await sendEmail({
         email: user.email,
         subject: `Verification Code (valid only for 10 minutues!)`,
@@ -288,7 +288,7 @@ const signup = catchAsync(async (req, res, next) => {
 
     return res.status(201).json({
       status: "success",
-      message: `You are successfully registered. Verification code was sent to ${newUser.email}. Please enter the code to get access`,
+      message: `Verification code was sent to ${newUser.email}. Please enter the code to get access`,
       username: newUser.username,
     });
   } catch (error) {
@@ -312,7 +312,7 @@ const sendVerificationCodeAgain = catchAsync(async (req, res, next) => {
     user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
     await user.save({ validateBeforeSave: false });
 
-    const message = `Your account is in pending mode. Your vefification code is ${randomNumber}. Please enter this code make your account active`;
+    const message = `Your account is in pending mode. Your verification code is ${randomNumber}. Please enter this code make your account active`;
     await sendEmail({
       email: user.email,
       subject: `Verification Code (valid only for 10 minutues!)`,
@@ -350,6 +350,15 @@ const verify = catchAsync(async (req, res, next) => {
   user.verificationCodeExpires = undefined;
   user.status = "active";
   await user.save({ validateBeforeSave: false });
+
+  // 2. Send welcome email
+  await sendWelcomeEmail({
+    userEmail: user.email,
+    userName: user.name,
+    productsLink: "https://www.groceteria.dev/shop",
+    contactUsLink: "https://www.groceteria.dev/contact-us",
+  });
+
   createSendToken(user, req, res);
 });
 
@@ -411,7 +420,7 @@ const forgotPassword = catchAsync(async (req, res, next) => {
   }`;
 
   const message = `Forgot your password? Please click the link below to reset your password: ${resetUrl}
-  \n If you did not forget your password, just ignore this email.`;
+  \nIf you did not forget your password, just ignore this email.`;
 
   try {
     await sendEmail({

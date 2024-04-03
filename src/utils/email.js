@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const { MailtrapClient } = require("mailtrap");
 
 const sendEmail = async function (options) {
   // Create a transporter
@@ -13,7 +14,7 @@ const sendEmail = async function (options) {
 
   // Define email options
   const mailOptions = {
-    from: "Muhammadali, CEO of GROCETERIA",
+    from: `Groceteria <mailtrap@groceteria.dev>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
@@ -23,4 +24,27 @@ const sendEmail = async function (options) {
   await transporter.sendMail(mailOptions);
 };
 
-module.exports = sendEmail;
+const sendWelcomeEmail = async (options) => {
+  const client = new MailtrapClient({
+    endpoint: "https://send.api.mailtrap.io/",
+    token: process.env.EMAIL_PASSWORD,
+  });
+
+  const sender = {
+    email: "mailtrap@groceteria.dev",
+    name: "Groceteria",
+  };
+
+  await client.send({
+    from: sender,
+    to: [{ email: options.userEmail }],
+    template_uuid: process.env.WELCOME_EMAIL_UUID,
+    template_variables: {
+      user_name: options.userName,
+      products_link: options.productsLink,
+      contact_us_link: options.contactUsLink,
+    },
+  });
+};
+
+module.exports = { sendEmail, sendWelcomeEmail };

@@ -9,6 +9,22 @@ const Category = require("../../models/categoryModel");
 
 ////////////////////////////////////////////////////////////////////////
 const getAllProducts = catchAsync(async (req, res, next) => {
+  if (req.query.search_query) {
+    const products = await Product.find({
+      name: { $regex: req.query.search_query, $options: "i" },
+    });
+
+    return res.status(200).json({
+      status: "success",
+      data: products,
+    });
+  } else if (req.query.search_query === "") {
+    return res.status(200).json({
+      status: "success",
+      data: null,
+    });
+  }
+
   const features = new APIFeatures(Product.find(), req.query)
     .filter()
     .sort()
@@ -19,15 +35,6 @@ const getAllProducts = catchAsync(async (req, res, next) => {
     path: "category",
     select: "name",
   });
-
-  if (!products) {
-    return next(
-      new ErrorClass(
-        `Sorry, we could not get products. Please, come back later or refresh the page.`,
-        400
-      )
-    );
-  }
 
   for (let i = products.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
